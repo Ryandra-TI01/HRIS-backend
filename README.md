@@ -35,7 +35,7 @@ Proyek ini dikembangkan sebagai **Final Project** untuk menyelesaikan program **
 | ⭐ **Performance Reviews** | Penilaian kinerja karyawan (1-10 stars) |
 | 💰 **Salary Slips** | Generate slip gaji bulanan otomatis |
 | 🛡️ **RBAC** | Role-Based Access Control (Admin HR, Manager, Employee) |
-| 🔔 **Notifications** | Real-time notification & broadcast system - (Opsional) |
+| 🔔 **Notifications** | Real-time notification & broadcast system |
 
 ---
 
@@ -45,10 +45,14 @@ Proyek ini dikembangkan dengan sepenuh hati oleh tim kami untuk membantu
 mempermudah pengelolaan SDM di perusahaan Anda.
 
 **Tim Pengembang:**  
-Eko Muchamad Haryono  - Lead Backend Developer
-Raka Muhammad Rabbani  - Backend Developer
-Ryandra Athaya Saleh  - Lead Frontend Developer
-Octaviani Nursalsabila  - UI/UX Developer
-Yossy Indra Kusuma  - Frontend Developer
+| 👤 Nama | 💼 Role |
+|---------|---------|
+| **Eko Muchamad Haryono** | Lead Backend Developer |
+| **Raka Muhammad Rabbani** | Backend Developer |
+| **Ryandra Athaya Saleh** | Lead Frontend Developer |
+| **Octaviani Nursalsabila** | UI/UX Developer |
+| **Yossy Indra Kusuma** | Frontend Developer |
 
 **FWD Batch 3 - Kelompok HRIS** 🚀
+
+

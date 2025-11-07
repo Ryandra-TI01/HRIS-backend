@@ -15,9 +15,9 @@ return new class extends Migration
             $table->id();
             $table->string('name');
             $table->string('email')->unique();
-            $table->timestamp('email_verified_at')->nullable();
             $table->string('password');
-            $table->rememberToken();
+            $table->enum('role', ['admin_hr', 'manager', 'employee'])->index();
+            $table->boolean('status_active')->default(true)->index();
             $table->timestamps();
         });
 

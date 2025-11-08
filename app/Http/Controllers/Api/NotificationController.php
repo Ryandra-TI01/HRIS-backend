@@ -33,7 +33,7 @@ class NotificationController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'Daftar notifikasi berhasil diambil',
+            'message' => 'Notifications retrieved successfully',
             'data' => $notifications,
         ], 200);
     }
@@ -54,7 +54,7 @@ class NotificationController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'Notifikasi Anda berhasil diambil',
+            'message' => 'Your notifications retrieved successfully',
             'data' => [
                 'notifications' => $notifications,
                 'unread_count' => $unreadCount,
@@ -77,7 +77,7 @@ class NotificationController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'Notifikasi belum dibaca berhasil diambil',
+            'message' => 'Unread notifications retrieved successfully',
             'data' => $notifications,
         ], 200);
     }
@@ -94,7 +94,7 @@ class NotificationController extends Controller
         if ($user->role !== 'admin_hr') {
             return response()->json([
                 'success' => false,
-                'message' => 'Anda tidak memiliki akses untuk membuat notifikasi',
+                'message' => 'You do not have access to create notifications',
             ], 403);
         }
 
@@ -107,7 +107,7 @@ class NotificationController extends Controller
         if ($validator->fails()) {
             return response()->json([
                 'success' => false,
-                'message' => 'Validasi gagal',
+                'message' => 'Validation failed',
                 'errors' => $validator->errors(),
             ], 422);
         }
@@ -116,7 +116,7 @@ class NotificationController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'Notifikasi berhasil dibuat',
+            'message' => 'Notification created successfully',
             'data' => $notification->load('user:id,name,email'),
         ], 201);
     }
@@ -133,7 +133,7 @@ class NotificationController extends Controller
         if ($user->role !== 'admin_hr') {
             return response()->json([
                 'success' => false,
-                'message' => 'Anda tidak memiliki akses untuk broadcast notifikasi',
+                'message' => 'You do not have access to broadcast notifications',
             ], 403);
         }
 
@@ -146,7 +146,7 @@ class NotificationController extends Controller
         if ($validator->fails()) {
             return response()->json([
                 'success' => false,
-                'message' => 'Validasi gagal',
+                'message' => 'Validation failed',
                 'errors' => $validator->errors(),
             ], 422);
         }
@@ -175,7 +175,7 @@ class NotificationController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'Notifikasi berhasil di-broadcast ke ' . count($notifications) . ' user',
+            'message' => 'Notifications successfully broadcast to ' . count($notifications) . ' users',
             'data' => [
                 'total_sent' => count($notifications),
                 'target_role' => $request->target_role ?? 'all',
@@ -196,7 +196,7 @@ class NotificationController extends Controller
         if (!$notification) {
             return response()->json([
                 'success' => false,
-                'message' => 'Notifikasi tidak ditemukan',
+                'message' => 'Notification not found',
             ], 404);
         }
 
@@ -204,13 +204,13 @@ class NotificationController extends Controller
         if ($user->role !== 'admin_hr' && $notification->user_id !== $user->id) {
             return response()->json([
                 'success' => false,
-                'message' => 'Anda tidak memiliki akses ke notifikasi ini',
+                'message' => 'You do not have access to this notification',
             ], 403);
         }
 
         return response()->json([
             'success' => true,
-            'message' => 'Detail notifikasi berhasil diambil',
+            'message' => 'Notification details retrieved successfully',
             'data' => $notification,
         ], 200);
     }
@@ -228,7 +228,7 @@ class NotificationController extends Controller
         if (!$notification) {
             return response()->json([
                 'success' => false,
-                'message' => 'Notifikasi tidak ditemukan',
+                'message' => 'Notification not found',
             ], 404);
         }
 
@@ -236,7 +236,7 @@ class NotificationController extends Controller
         if ($notification->user_id !== $user->id) {
             return response()->json([
                 'success' => false,
-                'message' => 'Anda tidak memiliki akses ke notifikasi ini',
+                'message' => 'You do not have access to this notification',
             ], 403);
         }
 
@@ -244,7 +244,7 @@ class NotificationController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'Notifikasi berhasil ditandai sebagai sudah dibaca',
+            'message' => 'Notification marked as read successfully',
             'data' => $notification->fresh(),
         ], 200);
     }
@@ -263,7 +263,7 @@ class NotificationController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => "Semua notifikasi berhasil ditandai sebagai sudah dibaca ($updated notifikasi)",
+            'message' => "All notifications marked as read successfully ($updated notifications)",
             'data' => [
                 'total_marked' => $updated,
             ],
@@ -283,7 +283,7 @@ class NotificationController extends Controller
         if (!$notification) {
             return response()->json([
                 'success' => false,
-                'message' => 'Notifikasi tidak ditemukan',
+                'message' => 'Notification not found',
             ], 404);
         }
 
@@ -291,7 +291,7 @@ class NotificationController extends Controller
         if ($user->role !== 'admin_hr' && $notification->user_id !== $user->id) {
             return response()->json([
                 'success' => false,
-                'message' => 'Anda tidak memiliki akses untuk menghapus notifikasi ini',
+                'message' => 'You do not have access to delete this notification',
             ], 403);
         }
 
@@ -299,7 +299,7 @@ class NotificationController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'Notifikasi berhasil dihapus',
+            'message' => 'Notification deleted successfully',
         ], 200);
     }
 }

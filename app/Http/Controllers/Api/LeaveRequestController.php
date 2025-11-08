@@ -23,7 +23,7 @@ class LeaveRequestController extends Controller
         $user = Auth::guard('api')->user();
         $employee = $user->employee;
 
-        abort_if(!$employee, 422, 'Profile employee belum tersedia');
+        abort_if(!$employee, 422, 'Employee profile not yet available');
 
         $data = $request->validate([
             'start_date' => 'required|date',
@@ -56,7 +56,7 @@ class LeaveRequestController extends Controller
         $user = Auth::guard('api')->user();
         $employee = $user->employee;
 
-        abort_if(!$employee, 422, 'Profile employee belum tersedia');
+        abort_if(!$employee, 422, 'Employee profile not yet available');
 
         $leaveRequests = LeaveRequest::where('employee_id', $employee->id)
             ->orderByDesc('id')

@@ -23,14 +23,14 @@ class AttendanceController extends Controller
         $user = Auth::guard('api')->user();
         $employee = $user->employee;
 
-        abort_if(!$employee, 422, 'Profile employee belum tersedia');
+        abort_if(!$employee, 422, 'Employee profile not yet available');
 
         $attendance = Attendance::firstOrCreate([
             'employee_id' => $employee->id,
             'date' => now()->toDateString(),
         ]);
 
-        abort_if($attendance->check_in_time, 409, 'Sudah check-in hari ini');
+        abort_if($attendance->check_in_time, 409, 'Already checked in today');
 
         $attendance->check_in_time = now();
         $attendance->save();
@@ -53,14 +53,14 @@ class AttendanceController extends Controller
         $user = Auth::guard('api')->user();
         $employee = $user->employee;
 
-        abort_if(!$employee, 422, 'Profile employee belum tersedia');
+        abort_if(!$employee, 422, 'Employee profile not yet available');
 
         $attendance = Attendance::where('employee_id', $employee->id)
             ->whereDate('date', now()->toDateString())
             ->firstOrFail();
 
-        abort_if(!$attendance->check_in_time, 422, 'Belum check-in');
-        abort_if($attendance->check_out_time, 409, 'Sudah check-out');
+        abort_if(!$attendance->check_in_time, 422, 'Not yet checked in');
+        abort_if($attendance->check_out_time, 409, 'Already checked out');
 
         $attendance->check_out_time = now();
         $attendance->computeWorkHour(); // Otomatis hitung work_hour (dikurangi 1 jam break)
@@ -84,7 +84,7 @@ class AttendanceController extends Controller
         $user = Auth::guard('api')->user();
         $employee = $user->employee;
 
-        abort_if(!$employee, 422, 'Profile employee belum tersedia');
+        abort_if(!$employee, 422, 'Employee profile not yet available');
 
         $query = Attendance::ofEmployee($employee->id);
 

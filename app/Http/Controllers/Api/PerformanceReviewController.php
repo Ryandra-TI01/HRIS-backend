@@ -108,7 +108,7 @@ class PerformanceReviewController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'Performance review berhasil dibuat',
+            'message' => 'Performance review created successfully',
             'data' => $review->load(['employee.user', 'reviewer']),
         ], 201);
     }
@@ -174,7 +174,7 @@ class PerformanceReviewController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'Performance review berhasil diupdate',
+            'message' => 'Performance review updated successfully',
             'data' => $review->load(['employee.user', 'reviewer']),
         ]);
     }
@@ -197,7 +197,7 @@ class PerformanceReviewController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'Performance review berhasil dihapus',
+            'message' => 'Performance review deleted successfully',
         ]);
     }
 }

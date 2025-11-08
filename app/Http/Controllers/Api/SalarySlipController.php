@@ -109,7 +109,7 @@ class SalarySlipController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'Slip gaji berhasil dibuat',
+            'message' => 'Salary slip created successfully',
             'data' => $slip->load(['employee.user', 'creator']),
         ], 201);
     }
@@ -169,7 +169,7 @@ class SalarySlipController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'Slip gaji berhasil diupdate',
+            'message' => 'Salary slip updated successfully',
             'data' => $slip->load(['employee.user', 'creator']),
         ]);
     }
@@ -192,7 +192,7 @@ class SalarySlipController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'Slip gaji berhasil dihapus',
+            'message' => 'Salary slip deleted successfully',
         ]);
     }
 }

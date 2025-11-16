@@ -38,8 +38,8 @@ class DatabaseSeeder extends Seeder
         $this->command->info('🎉 Database seeding completed successfully!');
         $this->command->newLine();
         $this->command->line('📊 Summary:');
-        $this->command->line('   - 4 Users (1 Admin HR, 1 Manager, 2 Employees)');
-        $this->command->line('   - 4 Employee Profiles');
+        $this->command->line('   - 10 Users (1 Admin HR, 4 Managers, 5 Employees)');
+        $this->command->line('   - 10 Employee Profiles');
         $this->command->line('   - ~40 Attendance Records (10 days per employee)');
         $this->command->line('   - 6 Leave Requests (3 per employee)');
         $this->command->line('   - 4 Performance Reviews (2 per employee)');
@@ -51,9 +51,15 @@ class DatabaseSeeder extends Seeder
             ['Role', 'Email', 'Password'],
             [
                 ['Admin HR', 'admin@hris.com', 'password123'],
-                ['Manager', 'manager@hris.com', 'password123'],
-                ['Employee 1', 'employee1@hris.com', 'password123'],
-                ['Employee 2', 'employee2@hris.com', 'password123'],
+                ['Manager (IT)', 'manager@hris.com', 'password123'],
+                ['Manager (Marketing)', 'yossy.manager@hris.com', 'password123'],
+                ['Manager (Finance)', 'dina.manager@hris.com', 'password123'],
+                ['Manager (Operations)', 'ahmad.manager@hris.com', 'password123'],
+                ['Employee (Developer)', 'employee1@hris.com', 'password123'],
+                ['Employee (Designer)', 'employee2@hris.com', 'password123'],
+                ['Employee (QA)', 'employee3@hris.com', 'password123'],
+                ['Employee (Marketing)', 'employee4@hris.com', 'password123'],
+                ['Employee (Finance)', 'employee5@hris.com', 'password123'],
             ]
         );
     }

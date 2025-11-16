@@ -12,12 +12,10 @@ class UserSeeder extends Seeder
     /**
      * Run the database seeds.
      *
-     * Membuat 4 user dengan role berbeda (menggunakan nama tim):
-     * - 1 Admin HR: Eko Muchamad Haryono (FWD03029)
-     * - 1 Manager: Raka Muhammad Rabbani (FWD03031)
-     * - 2 Employee: Ryandra Athaya Saleh (FWD03019) & Octaviani Nursalsabila (FWD03039)
-     * 
-     * Note: Yossy Indra Kusuma (FWD03017) tidak termasuk dalam demo users
+     * Membuat 10 user:
+     * - 1 Admin HR: Eko Muchamad Haryono
+     * - 4 Manager: Raka, Yossy, Dina, Ahmad
+     * - 5 Employee: Ryandra, Octaviani, Budi, Sari, Andi
      */
     public function run(): void
     {
@@ -37,6 +35,27 @@ class UserSeeder extends Seeder
                 'status_active' => true,
             ],
             [
+                'name' => 'Yossy Indra Kusuma',
+                'email' => 'yossy.manager@hris.com',
+                'password' => Hash::make('password123'),
+                'role' => Role::MANAGER,
+                'status_active' => true,
+            ],
+            [
+                'name' => 'Dina Ayu Lestari',
+                'email' => 'dina.manager@hris.com',
+                'password' => Hash::make('password123'),
+                'role' => Role::MANAGER,
+                'status_active' => true,
+            ],
+            [
+                'name' => 'Ahmad Rizky Pratama',
+                'email' => 'ahmad.manager@hris.com',
+                'password' => Hash::make('password123'),
+                'role' => Role::MANAGER,
+                'status_active' => true,
+            ],
+            [
                 'name' => 'Ryandra Athaya Saleh',
                 'email' => 'employee1@hris.com',
                 'password' => Hash::make('password123'),
@@ -50,12 +69,33 @@ class UserSeeder extends Seeder
                 'role' => Role::EMPLOYEE,
                 'status_active' => true,
             ],
+            [
+                'name' => 'Budi Santoso',
+                'email' => 'employee3@hris.com',
+                'password' => Hash::make('password123'),
+                'role' => Role::EMPLOYEE,
+                'status_active' => true,
+            ],
+            [
+                'name' => 'Sari Dewi',
+                'email' => 'employee4@hris.com',
+                'password' => Hash::make('password123'),
+                'role' => Role::EMPLOYEE,
+                'status_active' => true,
+            ],
+            [
+                'name' => 'Andi Wijaya',
+                'email' => 'employee5@hris.com',
+                'password' => Hash::make('password123'),
+                'role' => Role::EMPLOYEE,
+                'status_active' => true,
+            ],
         ];
 
         foreach ($users as $userData) {
             User::create($userData);
         }
 
-        $this->command->info('✅ 4 Users created successfully (Tim FWD Batch 3)!');
+        $this->command->info('✅ 10 Users created successfully (1 Admin HR + 4 Managers + 5 Employees)!');
     }
 }

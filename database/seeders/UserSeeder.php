@@ -12,10 +12,10 @@ class UserSeeder extends Seeder
     /**
      * Run the database seeds.
      *
-     * Membuat 10 user:
+     * Membuat 15 user:
      * - 1 Admin HR: Eko Muchamad Haryono
      * - 4 Manager: Raka, Yossy, Dina, Ahmad
-     * - 5 Employee: Ryandra, Octaviani, Budi, Sari, Andi
+     * - 10 Employee: Ryandra, Octaviani, Budi, Sari, Andi, Lisa, Doni, Maya, Ricky, Fitri
      */
     public function run(): void
     {
@@ -90,12 +90,47 @@ class UserSeeder extends Seeder
                 'role' => Role::EMPLOYEE,
                 'status_active' => true,
             ],
+            [
+                'name' => 'Lisa Permata',
+                'email' => 'employee6@hris.com',
+                'password' => Hash::make('password123'),
+                'role' => Role::EMPLOYEE,
+                'status_active' => true,
+            ],
+            [
+                'name' => 'Doni Hartono',
+                'email' => 'employee7@hris.com',
+                'password' => Hash::make('password123'),
+                'role' => Role::EMPLOYEE,
+                'status_active' => true,
+            ],
+            [
+                'name' => 'Maya Sari',
+                'email' => 'employee8@hris.com',
+                'password' => Hash::make('password123'),
+                'role' => Role::EMPLOYEE,
+                'status_active' => true,
+            ],
+            [
+                'name' => 'Ricky Setiawan',
+                'email' => 'employee9@hris.com',
+                'password' => Hash::make('password123'),
+                'role' => Role::EMPLOYEE,
+                'status_active' => true,
+            ],
+            [
+                'name' => 'Fitri Handayani',
+                'email' => 'employee10@hris.com',
+                'password' => Hash::make('password123'),
+                'role' => Role::EMPLOYEE,
+                'status_active' => true,
+            ],
         ];
 
         foreach ($users as $userData) {
             User::create($userData);
         }
 
-        $this->command->info('✅ 10 Users created successfully (1 Admin HR + 4 Managers + 5 Employees)!');
+        $this->command->info('✅ 15 Users created successfully (1 Admin HR + 4 Managers + 10 Employees)!');
     }
 }

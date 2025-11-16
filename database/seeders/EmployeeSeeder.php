@@ -25,6 +25,11 @@ class EmployeeSeeder extends Seeder
      * - EMP008: Budi Santoso (QA Tester) - Managed by Raka
      * - EMP009: Sari Dewi (Marketing Executive) - Managed by Yossy
      * - EMP010: Andi Wijaya (Finance Staff) - Managed by Dina
+     * - EMP011: Lisa Permata (Backend Developer) - Managed by Raka
+     * - EMP012: Doni Hartono (Operations Staff) - Managed by Ahmad
+     * - EMP013: Maya Sari (Content Creator) - Managed by Yossy
+     * - EMP014: Ricky Setiawan (Accountant) - Managed by Dina
+     * - EMP015: Fitri Handayani (DevOps Engineer) - Managed by Raka
      *
      * Dependency: UserSeeder (butuh user_id dan manager_id)
      */
@@ -41,9 +46,16 @@ class EmployeeSeeder extends Seeder
         $employee3User = User::where('email', 'employee3@hris.com')->first();
         $employee4User = User::where('email', 'employee4@hris.com')->first();
         $employee5User = User::where('email', 'employee5@hris.com')->first();
+        $employee6User = User::where('email', 'employee6@hris.com')->first();
+        $employee7User = User::where('email', 'employee7@hris.com')->first();
+        $employee8User = User::where('email', 'employee8@hris.com')->first();
+        $employee9User = User::where('email', 'employee9@hris.com')->first();
+        $employee10User = User::where('email', 'employee10@hris.com')->first();
 
-        if (!$adminUser || !$managerUser || !$yossyUser || !$dinaUser || !$ahmadUser || !$employee1User || !$employee2User || !$employee3User || !$employee4User || !$employee5User) {
-            $this->command->error('❌ Users not found! Please run UserSeeder first.');
+        $allUsers = [$adminUser, $managerUser, $yossyUser, $dinaUser, $ahmadUser, $employee1User, $employee2User, $employee3User, $employee4User, $employee5User, $employee6User, $employee7User, $employee8User, $employee9User, $employee10User];
+
+        if (in_array(null, $allUsers)) {
+            $this->command->error('❌ Some users not found! Please run UserSeeder first.');
             return;
         }
 
@@ -148,12 +160,62 @@ class EmployeeSeeder extends Seeder
                 'contact' => '+629012345678',
                 'manager_id' => $dinaUser->id, // Andi (Finance Staff) dibawahi Dina (Finance Manager)
             ],
+            [
+                'user_id' => $employee6User->id,
+                'employee_code' => 'EMP011',
+                'position' => 'Backend Developer',
+                'department' => 'IT',
+                'join_date' => '2024-03-01',
+                'employment_status' => EmploymentStatus::PERMANENT,
+                'contact' => '+620123456789',
+                'manager_id' => $managerUser->id, // Lisa (Backend Dev) dibawahi Raka (IT Manager)
+            ],
+            [
+                'user_id' => $employee7User->id,
+                'employee_code' => 'EMP012',
+                'position' => 'Operations Staff',
+                'department' => 'Operations',
+                'join_date' => '2024-03-15',
+                'employment_status' => EmploymentStatus::PERMANENT,
+                'contact' => '+620234567890',
+                'manager_id' => $ahmadUser->id, // Doni (Ops Staff) dibawahi Ahmad (Operations Manager)
+            ],
+            [
+                'user_id' => $employee8User->id,
+                'employee_code' => 'EMP013',
+                'position' => 'Content Creator',
+                'department' => 'Marketing',
+                'join_date' => '2024-04-01',
+                'employment_status' => EmploymentStatus::CONTRACT,
+                'contact' => '+620345678901',
+                'manager_id' => $yossyUser->id, // Maya (Content Creator) dibawahi Yossy (Marketing Manager)
+            ],
+            [
+                'user_id' => $employee9User->id,
+                'employee_code' => 'EMP014',
+                'position' => 'Accountant',
+                'department' => 'Finance',
+                'join_date' => '2024-04-15',
+                'employment_status' => EmploymentStatus::PERMANENT,
+                'contact' => '+620456789012',
+                'manager_id' => $dinaUser->id, // Ricky (Accountant) dibawahi Dina (Finance Manager)
+            ],
+            [
+                'user_id' => $employee10User->id,
+                'employee_code' => 'EMP015',
+                'position' => 'DevOps Engineer',
+                'department' => 'IT',
+                'join_date' => '2024-05-01',
+                'employment_status' => EmploymentStatus::PERMANENT,
+                'contact' => '+620567890123',
+                'manager_id' => $managerUser->id, // Fitri (DevOps) dibawahi Raka (IT Manager)
+            ],
         ];
 
         foreach ($employees as $employeeData) {
             Employee::create($employeeData);
         }
 
-        $this->command->info('✅ 10 Employees created successfully (1 Admin HR + 4 Managers + 5 Employees)!');
+        $this->command->info('✅ 15 Employees created successfully (1 Admin HR + 4 Managers + 10 Employees)!');
     }
 }

@@ -119,7 +119,11 @@ class Employee extends Model
         return $query->where(function ($subQuery) use ($term) {
             $subQuery->where('employee_code', 'like', "%{$term}%")
                 ->orWhere('position', 'like', "%{$term}%")
-                ->orWhere('department', 'like', "%{$term}%");
+                ->orWhere('department', 'like', "%{$term}%")
+                ->orWhereHas('user', function ($userQuery) use ($term) {
+                    $userQuery->where('name', 'like', "%{$term}%")
+                        ->orWhere('email', 'like', "%{$term}%");
+                });
         });
     }
 }

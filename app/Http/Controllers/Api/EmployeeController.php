@@ -12,7 +12,7 @@ use Illuminate\Support\Facades\Auth;
 class EmployeeController extends Controller
 {
     /**
-     * Menampilkan daftar karyawan
+     * Menampilkan daftar karyawan dengan fitur search bar dan filter advanced
      *
      * @param Request $request
      * @return JsonResponse
@@ -23,22 +23,65 @@ class EmployeeController extends Controller
         $user = Auth::guard('api')->user();
 
         if ($user->isAdminHr()) {
-            $query = Employee::with(['user', 'manager'])
-                ->search($request->query('q'));
+            $query = Employee::with(['user', 'manager']);
         } elseif ($user->isManager()) {
             $query = Employee::with(['user', 'manager'])
-                ->managedBy($user->id)
-                ->search($request->query('q'));
+                ->managedBy($user->id);
         } else {
             return response()->json([
                 'success' => false,
-                'message' => 'Forbidden'
+                'message' => 'Access denied'
             ], 403);
         }
 
+        // Fitur search bar - pencarian global
+        if ($search = $request->query('search')) {
+            $query->search($search);
+        }
+
+        // Filter berdasarkan departemen
+        if ($department = $request->query('department')) {
+            $query->where('department', 'like', "%{$department}%");
+        }
+
+        // Filter berdasarkan status kerja
+        if ($status = $request->query('employment_status')) {
+            $query->where('employment_status', $status);
+        }
+
+        // Filter berdasarkan posisi/jabatan
+        if ($position = $request->query('position')) {
+            $query->where('position', 'like', "%{$position}%");
+        }
+
+        // Filter berdasarkan manager
+        if ($managerId = $request->query('manager_id')) {
+            $query->where('manager_id', $managerId);
+        }
+
+        // Opsi pengurutan data
+        $sortBy = $request->query('sort_by', 'created_at');
+        $sortOrder = $request->query('sort_order', 'desc');
+        $allowedSorts = ['name', 'employee_code', 'position', 'department', 'join_date', 'created_at'];
+
+        if (in_array($sortBy, $allowedSorts)) {
+            if ($sortBy === 'name') {
+                $query->orderBy('users.name', $sortOrder);
+                $query->join('users', 'employees.user_id', '=', 'users.id');
+            } else {
+                $query->orderBy($sortBy, $sortOrder);
+            }
+        } else {
+            $query->orderBy('created_at', 'desc');
+        }
+
+        // Pengaturan pagination
+        $perPage = min($request->query('per_page', 15), 100); // Maksimal 100 per halaman
+
         return response()->json([
             'success' => true,
-            'data' => $query->paginate(20),
+            'message' => 'Employee data retrieved successfully',
+            'data' => $query->paginate($perPage),
         ]);
     }
 
@@ -60,6 +103,7 @@ class EmployeeController extends Controller
             ($user->id == $employee->user_id)) {
             return response()->json([
                 'success' => true,
+                'message' => 'Employee details retrieved successfully',
                 'data' => $employee,
             ]);
         }

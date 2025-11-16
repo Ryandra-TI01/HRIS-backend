@@ -19,6 +19,9 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        //
+        // Set format global untuk serialisasi Carbon tanggal
+        \Illuminate\Support\Carbon::serializeUsing(function (\Carbon\Carbon $carbon) {
+            return $carbon->format('Y-m-d H:i:s');
+        });
     }
 }

@@ -3,10 +3,9 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-class Attendance extends Model
+class Attendance extends BaseModel
 {
     use HasFactory;
 
@@ -82,8 +81,11 @@ class Attendance extends Model
         $checkIn = \Carbon\Carbon::parse($this->check_in_time);
         $checkOut = \Carbon\Carbon::parse($this->check_out_time);
 
-        $totalMinutes = $checkOut->diffInMinutes($checkIn);
-        $workMinutes = $totalMinutes - 60; // Kurangi 1 jam break
+        // Hitung selisih menit dari check-in ke check-out
+        $totalMinutes = $checkIn->diffInMinutes($checkOut);
+
+        // Kurangi 1 jam (60 menit) untuk break, tapi pastikan tidak negatif
+        $workMinutes = max(0, $totalMinutes - 60);
 
         $this->work_hour = round($workMinutes / 60, 2);
     }

@@ -59,6 +59,15 @@ class User extends Authenticatable implements JWTSubject
         ];
     }
 
+    /**
+     * Prepare a date for array / JSON serialization.
+     * Override untuk format konsisten tanpa timezone
+     */
+    protected function serializeDate(\DateTimeInterface $date): string
+    {
+        return $date->format('Y-m-d H:i:s');
+    }
+
     // ========== Metode JWT ==========
 
     /**

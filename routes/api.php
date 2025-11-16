@@ -34,6 +34,10 @@ Route::prefix('auth')->group(function () {
 Route::middleware(['auth:api'])->group(function () {
 
     // ========== Employees ==========
+    // Get list of managers (Admin HR & Manager only)
+    Route::get('employees/managers', [EmployeeController::class, 'getManagers'])
+        ->middleware('role:admin_hr,manager');
+
     // List semua karyawan (Admin HR & Manager only)
     Route::get('employees', [EmployeeController::class, 'index'])
         ->middleware('role:admin_hr,manager');

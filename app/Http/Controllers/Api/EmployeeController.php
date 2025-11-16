@@ -12,7 +12,7 @@ use Illuminate\Support\Facades\Auth;
 class EmployeeController extends Controller
 {
     /**
-     * Display a listing of employees
+     * Menampilkan daftar karyawan
      *
      * @param Request $request
      * @return JsonResponse
@@ -43,7 +43,7 @@ class EmployeeController extends Controller
     }
 
     /**
-     * Display the specified employee
+     * Menampilkan detail karyawan berdasarkan ID
      *
      * @param string $id
      * @return JsonResponse
@@ -54,7 +54,7 @@ class EmployeeController extends Controller
         $user = Auth::guard('api')->user();
         $employee = Employee::with(['user', 'manager'])->findOrFail($id);
 
-        // Check authorization
+        // Cek otorisasi akses
         if ($user->isAdminHr() ||
             ($user->isManager() && $employee->manager_id == $user->id) ||
             ($user->id == $employee->user_id)) {
@@ -71,7 +71,7 @@ class EmployeeController extends Controller
     }
 
     /**
-     * Store a newly created employee
+     * Membuat data karyawan baru
      *
      * @param Request $request
      * @return JsonResponse
@@ -100,7 +100,7 @@ class EmployeeController extends Controller
     }
 
     /**
-     * Update the specified employee
+     * Memperbarui data karyawan
      *
      * @param Request $request
      * @param string $id
@@ -131,7 +131,7 @@ class EmployeeController extends Controller
     }
 
     /**
-     * Remove the specified employee
+     * Menghapus data karyawan
      *
      * @param string $id
      * @return JsonResponse
@@ -149,7 +149,47 @@ class EmployeeController extends Controller
     }
 
     /**
-     * Authorize admin only
+     * Mendapatkan daftar semua manager (user dengan role manager)
+     *
+     * @param Request $request
+     * @return JsonResponse
+     */
+    public function getManagers(Request $request): JsonResponse
+    {
+        /** @var User $user */
+        $user = Auth::guard('api')->user();
+
+        // Hanya Admin HR dan Manager yang bisa mengakses
+        if (!$user->isAdminHr() && !$user->isManager()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Forbidden'
+            ], 403);
+        }
+
+        $query = User::where('role', 'manager')
+            ->where('status_active', true)
+            ->select('id', 'name', 'email', 'role');
+
+        // Pencarian berdasarkan nama atau email
+        if ($search = $request->query('search')) {
+            $query->where(function($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                  ->orWhere('email', 'like', "%{$search}%");
+            });
+        }
+
+        $managers = $query->orderBy('name', 'asc')->get();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Manager list retrieved successfully',
+            'data' => $managers,
+        ]);
+    }
+
+    /**
+     * Otorisasi khusus admin saja
      */
     private function authorizeAdmin(): void
     {

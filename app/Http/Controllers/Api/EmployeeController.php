@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Resources\EmployeeResource;
 use App\Models\Employee;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -60,9 +61,9 @@ class EmployeeController extends Controller
         }
 
         // Opsi pengurutan data
-        $sortBy = $request->query('sort_by', 'created_at');
-        $sortOrder = $request->query('sort_order', 'desc');
-        $allowedSorts = ['name', 'employee_code', 'position', 'department', 'join_date', 'created_at'];
+        $sortBy = $request->query('sort_by', 'employee_code');
+        $sortOrder = $request->query('sort_order', 'asc');
+        $allowedSorts = ['name', 'employee_code', 'position', 'department', 'join_date'];
 
         if (in_array($sortBy, $allowedSorts)) {
             if ($sortBy === 'name') {
@@ -72,16 +73,32 @@ class EmployeeController extends Controller
                 $query->orderBy($sortBy, $sortOrder);
             }
         } else {
-            $query->orderBy('created_at', 'desc');
+            $query->orderBy('employee_code', 'asc');
         }
 
         // Pengaturan pagination
         $perPage = min($request->query('per_page', 15), 100); // Maksimal 100 per halaman
 
+        $employees = $query->paginate($perPage);
+
         return response()->json([
             'success' => true,
             'message' => 'Employee data retrieved successfully',
-            'data' => $query->paginate($perPage),
+            'data' => [
+                'current_page' => $employees->currentPage(),
+                'data' => EmployeeResource::collection($employees->items()),
+                'first_page_url' => $employees->url(1),
+                'from' => $employees->firstItem(),
+                'last_page' => $employees->lastPage(),
+                'last_page_url' => $employees->url($employees->lastPage()),
+                'links' => $employees->linkCollection()->toArray(),
+                'next_page_url' => $employees->nextPageUrl(),
+                'path' => $employees->path(),
+                'per_page' => $employees->perPage(),
+                'prev_page_url' => $employees->previousPageUrl(),
+                'to' => $employees->lastItem(),
+                'total' => $employees->total(),
+            ],
         ]);
     }
 
@@ -104,7 +121,7 @@ class EmployeeController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'Employee details retrieved successfully',
-                'data' => $employee,
+                'data' => new EmployeeResource($employee),
             ]);
         }
 
@@ -136,10 +153,12 @@ class EmployeeController extends Controller
         ]);
 
         $employee = Employee::create($data);
+        $employee->load(['user', 'manager']);
 
         return response()->json([
             'success' => true,
-            'data' => $employee,
+            'message' => 'Employee created successfully',
+            'data' => new EmployeeResource($employee),
         ], 201);
     }
 
@@ -167,10 +186,12 @@ class EmployeeController extends Controller
         ]);
 
         $employee->update($data);
+        $employee->load(['user', 'manager']);
 
         return response()->json([
             'success' => true,
-            'data' => $employee,
+            'message' => 'Employee updated successfully',
+            'data' => new EmployeeResource($employee),
         ]);
     }
 

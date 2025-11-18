@@ -33,7 +33,7 @@ class Attendance extends BaseModel
             'date' => 'date',
             'check_in_time' => 'datetime',
             'check_out_time' => 'datetime',
-            'work_hour' => 'decimal:2',
+            // 'work_hour' => 'decimal:2',
         ];
     }
 
@@ -75,6 +75,7 @@ class Attendance extends BaseModel
     public function computeWorkHour(): void
     {
         if (!$this->check_in_time || !$this->check_out_time) {
+            $this->attributes['work_hour'] = 0;
             return;
         }
 
@@ -87,6 +88,22 @@ class Attendance extends BaseModel
         // Kurangi 1 jam (60 menit) untuk break, tapi pastikan tidak negatif
         $workMinutes = max(0, $totalMinutes - 60);
 
-        $this->work_hour = round($workMinutes / 60, 2);
+        $this->attributes['work_hour'] = round($workMinutes / 60, 2);
+    }
+
+    /**
+     * Accessor: Konversi work_hour (decimal) → "HH:MM"
+     * Otomatis dipakai saat toArray() / toJson()
+     */
+    public function getWorkHourAttribute($value): ?string
+    {
+       if (is_null($value)) {
+           return null; // atau '00:00' sesuai kebutuhan
+        }
+
+        $hours = floor($value);
+        $minutes = round(($value - $hours) * 60);
+
+        return sprintf('%02d:%02d', $hours, $minutes);
     }
 }

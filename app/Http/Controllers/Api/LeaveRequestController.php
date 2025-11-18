@@ -109,14 +109,14 @@ class LeaveRequestController extends Controller
         ]);
     }
 
-    /**
-     * Approve leave request
+        /**
+     * Review (Approve/Reject) leave request
      *
      * @param Request $request
      * @param string $id
      * @return JsonResponse
      */
-    public function approve(Request $request, string $id): JsonResponse
+    public function review(Request $request, string $id): JsonResponse
     {
         /** @var User $user */
         $user = Auth::guard('api')->user();
@@ -125,53 +125,46 @@ class LeaveRequestController extends Controller
 
         $leaveRequest = LeaveRequest::findOrFail($id);
 
-        // If manager: ensure it's their team member
+        // Jika manager: pastikan ini anggota timnya
         if ($user->isManager()) {
             abort_unless(
-                $leaveRequest->employee && $leaveRequest->employee->manager_id === $user->id,
+                $leaveRequest->employee?->manager_id === $user->id,
                 403,
-                'Forbidden'
+                'Anda hanya boleh mereview cuti anggota tim sendiri'
             );
         }
 
-        $leaveRequest->approve($user->id, $request->input('reviewer_note'));
+        // VALIDASI DIPERKUAT: status WAJIB diisi dan hanya boleh 'approve' atau 'reject'
+        $request->validate([
+            'status' => [
+                'required',
+                'in:approve,reject',
+                function ($attribute, $value, $fail) {
+                    if (!in_array($value, ['approve', 'reject'])) {
+                        $fail('Status harus dipilih: Setujui atau Tolak.');
+                    }
+                }
+            ],
+            'reviewer_note' => 'nullable|string|max:500',
+        ], [
+            'status.required' => 'Anda harus memilih status: Setujui atau Tolak.',
+            'status.in'       => 'Status tidak valid. Pilih "approve" atau "reject".',
+        ]);
+
+        $status = $request->input('status');
+        $note   = $request->input('reviewer_note');
+
+        // Proses review
+        $leaveRequest->review($user->id, $status, $note);
+
+        $message = $status === 'approve' 
+            ? 'Permohonan cuti telah disetujui.' 
+            : 'Permohonan cuti telah ditolak.';
 
         return response()->json([
             'success' => true,
-            'data' => $leaveRequest,
+            'message' => $message,
+            'data'    => $leaveRequest->load('employee.user', 'reviewer'),
         ]);
-    }
-
-    /**
-     * Reject leave request
-     *
-     * @param Request $request
-     * @param string $id
-     * @return JsonResponse
-     */
-    public function reject(Request $request, string $id): JsonResponse
-    {
-        /** @var User $user */
-        $user = Auth::guard('api')->user();
-
-        abort_unless($user->isAdminHr() || $user->isManager(), 403, 'Forbidden');
-
-        $leaveRequest = LeaveRequest::findOrFail($id);
-
-        // If manager: ensure it's their team member
-        if ($user->isManager()) {
-            abort_unless(
-                $leaveRequest->employee && $leaveRequest->employee->manager_id === $user->id,
-                403,
-                'Forbidden'
-            );
-        }
-
-        $leaveRequest->reject($user->id, $request->input('reviewer_note'));
-
-        return response()->json([
-            'success' => true,
-            'data' => $leaveRequest,
-        ]);
-    }
+    }   
 }

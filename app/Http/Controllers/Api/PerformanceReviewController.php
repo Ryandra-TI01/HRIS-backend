@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Resources\PerformanceReviewResource;
 use App\Models\PerformanceReview;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -29,14 +30,11 @@ class PerformanceReviewController extends Controller
         $query = PerformanceReview::with(['employee.user', 'reviewer']);
 
         if ($user->isEmployee()) {
-            // Employee: hanya lihat review untuk dirinya sendiri
             abort_if(!$user->employee, 422, 'Profile employee belum tersedia');
             $query->where('employee_id', $user->employee->id);
         } elseif ($user->isManager()) {
-            // Manager: lihat review yang dia buat
             $query->where('reviewer_id', $user->id);
         }
-        // Admin: lihat semua
 
         // Filter by employee_id
         if ($employeeId = $request->query('employee_id')) {
@@ -48,10 +46,37 @@ class PerformanceReviewController extends Controller
             $query->where('period', $period);
         }
 
+        // Batasi per_page maksimal 100, default 10
+        $perPage = min($request->query('per_page', 10), 100);
+        $reviews = $query->orderBy('created_at', 'desc')->paginate($perPage);
+
+        
         return response()->json([
             'success' => true,
-            'data' => $query->orderBy('created_at', 'desc')->paginate(20),
-        ]);
+            'message' => 'Performance review data retrieved successfully',
+            'data' => [
+                // Pagination info
+                'current_page'    => $reviews->currentPage(),
+                'per_page'        => $reviews->perPage(),
+                'total'           => $reviews->total(),
+                'last_page'       => $reviews->lastPage(),
+                'from'            => $reviews->firstItem(),
+                'to'              => $reviews->lastItem(),
+
+                // Data Performance Review (sudah difilter oleh Resource)
+                'data'            => PerformanceReviewResource::collection($reviews->items()),
+
+                // Navigation URLs
+                'first_page_url'  => $reviews->url(1),
+                'last_page_url'   => $reviews->url($reviews->lastPage()),
+                'next_page_url'   => $reviews->nextPageUrl(),
+                'prev_page_url'   => $reviews->previousPageUrl(),
+                'path'            => $reviews->path(),
+
+                // Pagination links untuk UI
+                'links'           => $reviews->linkCollection()->toArray(),
+            ],
+        ]); 
     }
 
     /**

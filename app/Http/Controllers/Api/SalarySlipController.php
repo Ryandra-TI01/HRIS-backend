@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Resources\SalarySlipResource;
 use App\Models\SalarySlip;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -27,27 +28,52 @@ class SalarySlipController extends Controller
         $query = SalarySlip::with(['employee.user', 'creator']);
 
         if ($user->isEmployee()) {
-            // Employee: hanya lihat slip miliknya sendiri
             abort_if(!$user->employee, 422, 'Profile employee belum tersedia');
             $query->where('employee_id', $user->employee->id);
         }
-        // Admin & Manager: lihat semua
 
-        // Filter by employee_id
         if ($employeeId = $request->query('employee_id')) {
             $query->where('employee_id', $employeeId);
         }
 
-        // Filter by period
         if ($period = $request->query('period')) {
             $query->where('period_month', $period);
         }
 
+        // Batasi per_page maksimal 100, default 10
+        $perPage = min($request->query('per_page', 10), 100);
+
+        // Jalankan query dengan pagination
+        $salarySlips = $query->orderBy('period_month', 'desc')->paginate($perPage);
+
+        // Response JSON lengkap & rapi
         return response()->json([
             'success' => true,
-            'data' => $query->orderBy('period_month', 'desc')->paginate(20),
+            'message' => 'Salary slip data retrieved successfully',
+            'data' => [
+                // Pagination info
+                'current_page'   => $salarySlips->currentPage(),
+                'per_page'       => $salarySlips->perPage(),
+                'total'          => $salarySlips->total(),
+                'last_page'      => $salarySlips->lastPage(),
+                'from'           => $salarySlips->firstItem(),
+                'to'             => $salarySlips->lastItem(),
+
+                // Data slip gaji (sudah difilter oleh Resource)
+                'data'           => SalarySlipResource::collection($salarySlips->items()),
+
+                // Navigation URLs
+                'first_page_url' => $salarySlips->url(1),
+                'last_page_url'  => $salarySlips->url($salarySlips->lastPage()),
+                'next_page_url'  => $salarySlips->nextPageUrl(),
+                'prev_page_url'  => $salarySlips->previousPageUrl(),
+                'path'           => $salarySlips->path(),
+
+                // Pagination links untuk UI
+                'links'          => $salarySlips->linkCollection()->toArray(),
+            ],
         ]);
-    }
+    }   
 
     /**
      * Get my salary slips (employee)

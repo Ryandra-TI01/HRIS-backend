@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Resources\LeaveRequestResource;
 use App\Models\LeaveRequest;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -103,9 +104,41 @@ class LeaveRequestController extends Controller
             $query->forManagerTeam($user->id);
         }
 
+        // Batasi per_page maksimal 100, default 10
+        $perPage = min($request->query('per_page', 10), 100);
+
+        // Eksekusi query dengan pagination
+        $leaveRequests = $query->orderByDesc('id')->paginate($perPage);
+
+        // Transform items menggunakan Resource
+        $resourceCollection = LeaveRequestResource::collection($leaveRequests->items());
+
         return response()->json([
             'success' => true,
-            'data' => $query->orderByDesc('id')->paginate(20),
+            'message' => 'Leave requests retrieved successfully',
+            'data' => [
+                // Pagination info
+                'current_page'   => $leaveRequests->currentPage(),
+                'per_page'       => $leaveRequests->perPage(),
+                'total'          => $leaveRequests->total(),
+                'last_page'      => $leaveRequests->lastPage(),
+                'from'           => $leaveRequests->firstItem(),
+                'to'             => $leaveRequests->lastItem(),
+                'data'           => $resourceCollection,
+
+                // Data Leave Request (sudah difilter oleh Resource)
+                'data'            => LeaveRequestResource::collection($leaveRequests->items()),
+
+                // Navigation URLs
+                'first_page_url' => $leaveRequests->url(1),
+                'last_page_url'  => $leaveRequests->url($leaveRequests->lastPage()),
+                'next_page_url'  => $leaveRequests->nextPageUrl(),
+                'prev_page_url'  => $leaveRequests->previousPageUrl(),
+                'path'           => $leaveRequests->path(),
+
+                // Links untuk frontend (seperti Laravel default)
+                'links'          => $leaveRequests->linkCollection()->toArray(),
+            ]
         ]);
     }
 

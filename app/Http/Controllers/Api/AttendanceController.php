@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Resources\AttendanceResource;
 use App\Models\Attendance;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -171,9 +172,35 @@ class AttendanceController extends Controller
             });
         }
 
+        // Batasi per_page maksimal 100, default 10
+        $perPage = min($request->query('per_page', 10), 100);
+        $attendances = $query->orderBy('date', 'desc')->paginate($perPage);
+
         return response()->json([
             'success' => true,
-            'data' => $query->orderBy('date', 'desc')->paginate(20),
+            'message' => 'Attendance data retrieved successfully',
+            'data' => [
+                // Pagination info
+                'current_page'   => $attendances->currentPage(),
+                'per_page'       => $attendances->perPage(),
+                'total'          => $attendances->total(),
+                'last_page'      => $attendances->lastPage(),
+                'from'           => $attendances->firstItem(),
+                'to'             => $attendances->lastItem(),
+
+                // Data Attendance (sudah difilter oleh Resource)
+                'data'           => AttendanceResource::collection($attendances->getCollection()),
+
+                // Navigation URLs
+                'first_page_url' => $attendances->url(1),
+                'last_page_url'  => $attendances->url($attendances->lastPage()),
+                'next_page_url'  => $attendances->nextPageUrl(),
+                'prev_page_url'  => $attendances->previousPageUrl(),
+                'path'           => $attendances->path(),
+
+                // Pagination links untuk UI
+                'links'          => $attendances->linkCollection()->toArray(),
+            ],
         ]);
-    }
+    }     
 }

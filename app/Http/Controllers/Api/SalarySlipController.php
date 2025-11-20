@@ -25,26 +25,32 @@ class SalarySlipController extends Controller
         /** @var User $user */
         $user = Auth::guard('api')->user();
 
+        // Mulai query dengan eager loading relasi
         $query = SalarySlip::with(['employee.user', 'creator']);
 
+        // Jika employee, hanya bisa lihat slip gaji sendiri
         if ($user->isEmployee()) {
             abort_if(!$user->employee, 422, 'Profile employee belum tersedia');
             $query->where('employee_id', $user->employee->id);
         }
 
+        // Filter berdasarkan employee_id (opsional)
         if ($employeeId = $request->query('employee_id')) {
             $query->where('employee_id', $employeeId);
         }
 
+        // Filter berdasarkan periode (opsional) - tidak ada default filter
         if ($period = $request->query('period')) {
-            $query->where('period_month', $period);
+            $query->where('period_month', 'like', "%{$period}%");
         }
 
-        // Batasi per_page maksimal 100, default 10
+        // Validasi dan pengaturan pagination
         $perPage = min($request->query('per_page', 10), 100);
 
-        // Jalankan query dengan pagination
-        $salarySlips = $query->orderBy('period_month', 'desc')->paginate($perPage);
+        // Jalankan query dengan pagination, urutkan terbaru dulu
+        $salarySlips = $query->orderBy('period_month', 'desc')
+                           ->orderBy('created_at', 'desc')
+                           ->paginate($perPage);
 
         // Response JSON lengkap & rapi
         return response()->json([
@@ -73,7 +79,7 @@ class SalarySlipController extends Controller
                 'links'          => $salarySlips->linkCollection()->toArray(),
             ],
         ]);
-    }   
+    }
 
     /**
      * Get my salary slips (employee)
@@ -90,16 +96,21 @@ class SalarySlipController extends Controller
         abort_if(!$employee, 422, 'Profile employee belum tersedia');
 
         $query = SalarySlip::ofEmployee($employee->id)
-            ->with('creator');
+            ->with(['employee.user', 'creator']);
 
-        // Filter by period (optional)
+        // Filter berdasarkan periode (opsional)
         if ($period = $request->query('period')) {
-            $query->inPeriod($period);
+            $query->where('period_month', 'like', "%{$period}%");
         }
+
+        $slips = $query->orderBy('period_month', 'desc')
+                      ->orderBy('created_at', 'desc')
+                      ->get();
 
         return response()->json([
             'success' => true,
-            'data' => $query->orderBy('period_month', 'desc')->get(),
+            'message' => 'My salary slips retrieved successfully',
+            'data' => SalarySlipResource::collection($slips),
         ]);
     }
 
@@ -114,8 +125,15 @@ class SalarySlipController extends Controller
         /** @var User $user */
         $user = Auth::guard('api')->user();
 
+        // Cek otorisasi - hanya Admin HR
         abort_unless($user->isAdminHr(), 403, 'Forbidden - Admin HR only');
 
+        // Validasi input yang fleksibel tapi tetap aman
+        // employee_id: harus ada di tabel employees
+        // period_month: format bebas (bisa YYYY-MM, MM-YYYY, atau format lain)
+        // basic_salary: wajib, minimal 0 (tidak ada batas maksimal)
+        // allowance & deduction: opsional, minimal 0 jika diisi
+        // remarks: opsional, panjang bebas untuk catatan
         $validated = $request->validate([
             'employee_id' => 'required|exists:employees,id',
             'period_month' => 'required|string|max:20',
@@ -125,19 +143,59 @@ class SalarySlipController extends Controller
             'remarks' => 'nullable|string',
         ]);
 
-        $validated['created_by'] = $user->id;
-        $validated['allowance'] = $validated['allowance'] ?? 0;
-        $validated['deduction'] = $validated['deduction'] ?? 0;
+        // Validasi duplikasi: Satu employee hanya boleh punya satu slip per periode
+        // Ini sesuai dengan constraint 'unique_employee_period' di database
+        // Mencegah error SQL constraint violation saat insert
+        $existingSlip = SalarySlip::where('employee_id', $validated['employee_id'])
+                                 ->where('period_month', $validated['period_month'])
+                                 ->first();
 
-        $slip = new SalarySlip($validated);
-        $slip->computeTotalSalary(); // Hitung total_salary otomatis
-        $slip->save();
+        if ($existingSlip) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Salary slip for this employee and period already exists',
+                'errors' => [
+                    'period_month' => ['A salary slip for this period has already been created']
+                ]
+            ], 422);
+        }
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Salary slip created successfully',
-            'data' => $slip->load(['employee.user', 'creator']),
-        ], 201);
+        try {
+            // Siapkan data dengan nilai default
+            $slipData = [
+                'employee_id' => $validated['employee_id'],
+                'created_by' => $user->id,
+                'period_month' => $validated['period_month'],
+                'basic_salary' => $validated['basic_salary'],
+                'allowance' => $validated['allowance'] ?? 0,
+                'deduction' => $validated['deduction'] ?? 0,
+                'remarks' => $validated['remarks'] ?? null,
+            ];
+
+            // Buat instance slip gaji
+            $slip = new SalarySlip($slipData);
+
+            // Hitung total salary sebelum menyimpan
+            $slip->computeTotalSalary();
+
+            // Simpan ke database
+            $slip->save();
+
+            // Load relasi untuk response
+            $slip->load(['employee.user', 'creator']);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Salary slip created successfully',
+                'data' => new SalarySlipResource($slip),
+            ], 201);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to create salary slip: ' . $e->getMessage(),
+            ], 500);
+        }
     }
 
     /**
@@ -153,7 +211,7 @@ class SalarySlipController extends Controller
 
         $slip = SalarySlip::with(['employee.user', 'creator'])->findOrFail($id);
 
-        // Employee hanya bisa lihat slip miliknya
+        // Employee hanya bisa lihat slip miliknya sendiri
         if ($user->isEmployee()) {
             abort_if(!$user->employee, 422, 'Profile employee belum tersedia');
             abort_unless($slip->employee_id === $user->employee->id, 403, 'Forbidden');
@@ -161,7 +219,8 @@ class SalarySlipController extends Controller
 
         return response()->json([
             'success' => true,
-            'data' => $slip,
+            'message' => 'Salary slip details retrieved successfully',
+            'data' => new SalarySlipResource($slip),
         ]);
     }
 
@@ -177,27 +236,66 @@ class SalarySlipController extends Controller
         /** @var User $user */
         $user = Auth::guard('api')->user();
 
+        // Cek otorisasi - hanya Admin HR
         abort_unless($user->isAdminHr(), 403, 'Forbidden - Admin HR only');
 
         $slip = SalarySlip::findOrFail($id);
 
+        // Validasi input untuk update yang lebih fleksibel
         $validated = $request->validate([
-            'period_month' => 'sometimes|string|max:20',
+            'period_month' => 'sometimes|string|max:50', // Format bebas
             'basic_salary' => 'sometimes|numeric|min:0',
             'allowance' => 'sometimes|numeric|min:0',
             'deduction' => 'sometimes|numeric|min:0',
             'remarks' => 'nullable|string',
         ]);
 
-        $slip->fill($validated);
-        $slip->computeTotalSalary(); // Hitung ulang total_salary
-        $slip->save();
+        // Validasi duplikasi saat update period_month
+        // Pastikan tidak bentrok dengan slip lain di periode baru
+        // Exclude slip yang sedang diedit (id != current slip)
+        if (isset($validated['period_month']) && $validated['period_month'] !== $slip->period_month) {
+            $existingSlip = SalarySlip::where('employee_id', $slip->employee_id)
+                                     ->where('period_month', $validated['period_month'])
+                                     ->where('id', '!=', $slip->id)
+                                     ->first();
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Salary slip updated successfully',
-            'data' => $slip->load(['employee.user', 'creator']),
-        ]);
+            if ($existingSlip) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Salary slip for this employee and period already exists',
+                    'errors' => [
+                        'period_month' => ['This period already has a salary slip for the same employee']
+                    ]
+                ], 422);
+            }
+        }
+
+        try {
+            // Update data slip
+            $slip->fill($validated);
+
+            // Hitung ulang total_salary jika ada perubahan finansial
+            if (isset($validated['basic_salary']) || isset($validated['allowance']) || isset($validated['deduction'])) {
+                $slip->computeTotalSalary();
+            }
+
+            $slip->save();
+
+            // Load relasi untuk response
+            $slip->load(['employee.user', 'creator']);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Salary slip updated successfully',
+                'data' => new SalarySlipResource($slip),
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to update salary slip: ' . $e->getMessage(),
+            ], 500);
+        }
     }
 
     /**

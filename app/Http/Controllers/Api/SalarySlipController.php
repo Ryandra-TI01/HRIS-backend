@@ -30,7 +30,7 @@ class SalarySlipController extends Controller
 
         // Jika employee, hanya bisa lihat slip gaji sendiri
         if ($user->isEmployee()) {
-            abort_if(!$user->employee, 422, 'Profile employee belum tersedia');
+            abort_if(!$user->employee, 422, 'Employee profile not available');
             $query->where('employee_id', $user->employee->id);
         }
 
@@ -93,7 +93,7 @@ class SalarySlipController extends Controller
         $user = Auth::guard('api')->user();
         $employee = $user->employee;
 
-        abort_if(!$employee, 422, 'Profile employee belum tersedia');
+        abort_if(!$employee, 422, 'Employee profile not available');
 
         $query = SalarySlip::ofEmployee($employee->id)
             ->with(['employee.user', 'creator']);
@@ -213,7 +213,7 @@ class SalarySlipController extends Controller
 
         // Employee hanya bisa lihat slip miliknya sendiri
         if ($user->isEmployee()) {
-            abort_if(!$user->employee, 422, 'Profile employee belum tersedia');
+            abort_if(!$user->employee, 422, 'Employee profile not available');
             abort_unless($slip->employee_id === $user->employee->id, 403, 'Forbidden');
         }
 

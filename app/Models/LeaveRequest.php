@@ -40,7 +40,7 @@ class LeaveRequest extends BaseModel
     }
 
     // ========== Relasi ==========
-    
+
     /**
      * Relasi N:1 dengan Employee
      */
@@ -58,7 +58,7 @@ class LeaveRequest extends BaseModel
     }
 
     // ========== Scopes ==========
-    
+
     /**
      * Scope untuk filter status Pending
      */
@@ -108,6 +108,94 @@ class LeaveRequest extends BaseModel
         );
     }
 
+    /**
+     * Scope untuk pencarian global leave request
+     * Mencari berdasarkan:
+     * - Nama employee
+     * - Email employee
+     * - Kode employee (employee_code)
+     * - Departemen employee
+     * - Posisi employee
+     * - Reason/alasan cuti
+     */
+    public function scopeSearch($query, ?string $term)
+    {
+        if (!$term) {
+            return $query;
+        }
+
+        return $query->where(function ($subQuery) use ($term) {
+            $subQuery->where('reason', 'like', "%{$term}%")
+                ->orWhereHas('employee', function ($employeeQuery) use ($term) {
+                    $employeeQuery->where('employee_code', 'like', "%{$term}%")
+                        ->orWhere('position', 'like', "%{$term}%")
+                        ->orWhere('department', 'like', "%{$term}%")
+                        ->orWhereHas('user', function ($userQuery) use ($term) {
+                            $userQuery->where('name', 'like', "%{$term}%")
+                                ->orWhere('email', 'like', "%{$term}%");
+                        });
+                });
+        });
+    }
+
+    /**
+     * Scope untuk filter berdasarkan status
+     */
+    public function scopeByStatus($query, ?string $status)
+    {
+        if (!$status) {
+            return $query;
+        }
+
+        return $query->where('status', $status);
+    }
+
+    /**
+     * Scope untuk filter berdasarkan department
+     */
+    public function scopeByDepartment($query, ?string $department)
+    {
+        if (!$department) {
+            return $query;
+        }
+
+        return $query->whereHas('employee', function ($employeeQuery) use ($department) {
+            $employeeQuery->where('department', 'like', "%{$department}%");
+        });
+    }
+
+    /**
+     * Scope untuk filter berdasarkan range tanggal
+     */
+    public function scopeByDateRange($query, ?string $startDate, ?string $endDate)
+    {
+        if ($startDate) {
+            $query->where('start_date', '>=', $startDate);
+        }
+
+        if ($endDate) {
+            $query->where('end_date', '<=', $endDate);
+        }
+
+        return $query;
+    }
+
+    /**
+     * Scope untuk filter berdasarkan durasi cuti (dalam hari)
+     */
+    public function scopeByDuration($query, ?int $minDays, ?int $maxDays)
+    {
+        if ($minDays !== null) {
+            $query->whereRaw('DATEDIFF(end_date, start_date) + 1 >= ?', [$minDays]);
+        }
+
+        if ($maxDays !== null) {
+            $query->whereRaw('DATEDIFF(end_date, start_date) + 1 <= ?', [$maxDays]);
+        }
+
+        return $query;
+    }
+
     // ========== Metode Helper ==========
 
     /**
@@ -117,7 +205,7 @@ class LeaveRequest extends BaseModel
     {
         // Pastikan status valid
         $statusEnum = $status === 'Approved' ? LeaveStatus::APPROVED : LeaveStatus::REJECTED;
-        
+
         $this->status = $statusEnum;
         $this->reviewed_by = $reviewerId;
 

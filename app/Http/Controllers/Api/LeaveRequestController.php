@@ -87,6 +87,21 @@ class LeaveRequestController extends Controller
     /**
      * Get all leave requests (Admin HR / Manager only)
      *
+     * Query Parameters:
+     * - search: string (pencarian global nama, email, employee_code, department, position, reason)
+     * - status: string (filter berdasarkan status: Pending, Approved, Rejected)
+     * - employee_id: integer (filter berdasarkan employee ID)
+     * - period: string (filter berdasarkan bulan, format: YYYY-MM)
+     * - department: string (filter berdasarkan departemen)
+     * - date_from: string (filter tanggal mulai cuti, format: YYYY-MM-DD)
+     * - date_to: string (filter tanggal akhir cuti, format: YYYY-MM-DD)
+     * - min_duration: integer (filter durasi minimum cuti dalam hari)
+     * - max_duration: integer (filter durasi maksimum cuti dalam hari)
+     * - sort_by: string (start_date|end_date|status|created_at|employee_name, default: created_at)
+     * - sort_order: string (asc|desc, default: desc)
+     * - per_page: integer (1-100, default: 10)
+     * - page: integer (default: 1)
+     *
      * @param Request $request
      * @return JsonResponse
      */
@@ -99,31 +114,87 @@ class LeaveRequestController extends Controller
 
         $query = LeaveRequest::with(['employee.user', 'reviewer']);
 
-        // Filter by status
-        if ($status = $request->query('status')) {
-            $query->where('status', $status);
+        /* =================================
+         * FITUR PENCARIAN & FILTER BARU
+         * ================================= */
+
+        // Pencarian global - mencari di nama, email, employee_code, department, position, reason
+        if ($search = $request->query('search')) {
+            $query->search($search);
         }
 
-        // Filter by employee_id
+        // Filter by status (existing, enhanced)
+        if ($status = $request->query('status')) {
+            $query->byStatus($status);
+        }
+
+        // Filter by employee_id (existing)
         if ($employeeId = $request->query('employee_id')) {
             $query->where('employee_id', $employeeId);
         }
 
-        // Filter by period (month)
+        // Filter by period (month) (existing)
         if ($yearMonth = $request->query('period')) {
             $query->inPeriod($yearMonth);
         }
 
-        // If manager: limit to their team
+        // Filter berdasarkan departemen
+        if ($department = $request->query('department')) {
+            $query->byDepartment($department);
+        }
+
+        // Filter berdasarkan range tanggal cuti
+        $dateFrom = $request->query('date_from');
+        $dateTo = $request->query('date_to');
+        if ($dateFrom || $dateTo) {
+            $query->byDateRange($dateFrom, $dateTo);
+        }
+
+        // Filter berdasarkan durasi cuti
+        $minDuration = $request->query('min_duration') ? (int) $request->query('min_duration') : null;
+        $maxDuration = $request->query('max_duration') ? (int) $request->query('max_duration') : null;
+        if ($minDuration !== null || $maxDuration !== null) {
+            $query->byDuration($minDuration, $maxDuration);
+        }
+
+        // If manager: limit to their team (existing)
         if ($user->isManager()) {
             $query->forManagerTeam($user->id);
         }
 
-        // Batasi per_page maksimal 100, default 10
+        /* =================================
+         * SORTING OPTIONS
+         * ================================= */
+
+        // Validasi sort_by parameter
+        $allowedSortBy = ['start_date', 'end_date', 'status', 'created_at', 'employee_name'];
+        $sortBy = $request->query('sort_by', 'created_at');
+        $sortBy = in_array($sortBy, $allowedSortBy) ? $sortBy : 'created_at';
+
+        // Validasi sort_order parameter
+        $sortOrder = $request->query('sort_order', 'desc');
+        $sortOrder = in_array(strtolower($sortOrder), ['asc', 'desc']) ? $sortOrder : 'desc';
+
+        // Apply sorting
+        if ($sortBy === 'employee_name') {
+            $query->join('employees', 'leave_requests.employee_id', '=', 'employees.id')
+                  ->join('users', 'employees.user_id', '=', 'users.id')
+                  ->orderBy('users.name', $sortOrder)
+                  ->select('leave_requests.*'); // Avoid column conflicts
+        } else {
+            $query->orderBy($sortBy, $sortOrder);
+        }
+
+        // Secondary sort untuk konsistensi
+        if ($sortBy !== 'created_at') {
+            $query->orderBy('created_at', 'desc');
+        }
+
+        // Pagination
         $perPage = min($request->query('per_page', 10), 100);
 
         // Eksekusi query dengan pagination
-        $leaveRequests = $query->orderByDesc('id')->paginate($perPage);
+        $leaveRequests = $query->paginate($perPage);
 
         // Transform items menggunakan Resource
         $resourceCollection = LeaveRequestResource::collection($leaveRequests->items());
@@ -139,7 +210,6 @@ class LeaveRequestController extends Controller
                 'last_page'      => $leaveRequests->lastPage(),
                 'from'           => $leaveRequests->firstItem(),
                 'to'             => $leaveRequests->lastItem(),
-                'data'           => $resourceCollection,
 
                 // Data Leave Request (sudah difilter oleh Resource)
                 'data'            => LeaveRequestResource::collection($leaveRequests->items()),
@@ -153,6 +223,21 @@ class LeaveRequestController extends Controller
 
                 // Links untuk frontend (seperti Laravel default)
                 'links'          => $leaveRequests->linkCollection()->toArray(),
+
+                // Filter info untuk frontend
+                'filters' => [
+                    'search' => $request->query('search'),
+                    'status' => $request->query('status'),
+                    'employee_id' => $request->query('employee_id'),
+                    'period' => $request->query('period'),
+                    'department' => $request->query('department'),
+                    'date_from' => $request->query('date_from'),
+                    'date_to' => $request->query('date_to'),
+                    'min_duration' => $minDuration,
+                    'max_duration' => $maxDuration,
+                    'sort_by' => $sortBy,
+                    'sort_order' => $sortOrder,
+                ],
             ]
         ]);
     }

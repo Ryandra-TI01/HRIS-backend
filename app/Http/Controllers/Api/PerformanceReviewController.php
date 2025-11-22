@@ -14,7 +14,7 @@ use Illuminate\Validation\Rule;
 class PerformanceReviewController extends Controller
 {
     /**
-     * Get all performance reviews
+     * Get all performance reviews dengan fitur pencarian dan filter yang lengkap
      * Admin: semua review
      * Manager: review yang dia buat untuk timnya
      * Employee: review untuk dirinya sendiri
@@ -29,6 +29,7 @@ class PerformanceReviewController extends Controller
 
         $query = PerformanceReview::with(['employee.user', 'reviewer']);
 
+        // Filter berdasarkan role (otorisasi yang sudah ada)
         if ($user->isEmployee()) {
             abort_if(!$user->employee, 422, 'Profile employee belum tersedia');
             $query->where('employee_id', $user->employee->id);
@@ -36,26 +37,96 @@ class PerformanceReviewController extends Controller
             $query->where('reviewer_id', $user->id);
         }
 
-        // Filter by employee_id
+        // ========== Parameter Pencarian & Filter yang Ditingkatkan ==========
+
+        // Pencarian global di berbagai field
+        if ($search = $request->query('search')) {
+            $query->search($search);
+        }
+
+        // Filter berdasarkan karyawan tertentu (yang sudah ada)
         if ($employeeId = $request->query('employee_id')) {
             $query->where('employee_id', $employeeId);
         }
 
-        // Filter by period
+        // Filter berdasarkan reviewer tertentu (khusus Admin/Manager)
+        if ($reviewerId = $request->query('reviewer_id')) {
+            // Hanya boleh jika user bisa melihat review dari berbagai reviewer
+            if ($user->isAdminHr()) {
+                $query->where('reviewer_id', $reviewerId);
+            }
+        }
+
+        // Filter berdasarkan periode (yang sudah ada, ditingkatkan)
         if ($period = $request->query('period')) {
             $query->where('period', $period);
         }
 
-        // Batasi per_page maksimal 100, default 10
-        $perPage = min($request->query('per_page', 10), 100);
-        $reviews = $query->orderBy('created_at', 'desc')->paginate($perPage);
+        // Filter berdasarkan tahun
+        if ($year = $request->query('year')) {
+            $query->byYear($year);
+        }
 
-        
+        // Filter berdasarkan tipe periode (bulanan/kuartalan)
+        if ($periodType = $request->query('period_type')) {
+            $query->byPeriodType($periodType);
+        }
+
+        // Filter berdasarkan departemen
+        if ($department = $request->query('department')) {
+            $query->byDepartment($department);
+        }
+
+        // Filter berdasarkan range rating
+        $minRating = $request->query('min_rating');
+        $maxRating = $request->query('max_rating');
+        if ($minRating !== null || $maxRating !== null) {
+            $query->byRatingRange(
+                $minRating ? (int)$minRating : null,
+                $maxRating ? (int)$maxRating : null
+            );
+        }
+
+        // Filter berdasarkan range tanggal
+        $dateFrom = $request->query('date_from');
+        $dateTo = $request->query('date_to');
+        if ($dateFrom || $dateTo) {
+            $query->byDateRange($dateFrom, $dateTo);
+        }
+
+        // ========== Pengurutan ==========
+        $sortBy = $request->query('sort_by', 'created_at');
+        $sortOrder = $request->query('sort_order', 'desc');
+
+        // Validasi kolom pengurutan
+        $allowedSortColumns = [
+            'created_at', 'period', 'total_star', 'employee_name'
+        ];
+
+        if (in_array($sortBy, $allowedSortColumns)) {
+            if ($sortBy === 'employee_name') {
+                // Urutkan berdasarkan nama karyawan (relasi)
+                $query->join('employees', 'performance_reviews.employee_id', '=', 'employees.id')
+                      ->join('users', 'employees.user_id', '=', 'users.id')
+                      ->orderBy('users.name', $sortOrder)
+                      ->select('performance_reviews.*');
+            } else {
+                $query->orderBy($sortBy, $sortOrder);
+            }
+        } else {
+            $query->orderBy('created_at', 'desc');
+        }
+
+        // ========== Paginasi ==========
+        $perPage = min($request->query('per_page', 10), 100);
+        $reviews = $query->paginate($perPage);
+
+        // ========== Response yang Ditingkatkan dengan Metadata Filter ==========
         return response()->json([
             'success' => true,
-            'message' => 'Performance review data retrieved successfully',
+            'message' => 'Data performance review berhasil diambil',
             'data' => [
-                // Pagination info
+                // Info paginasi
                 'current_page'    => $reviews->currentPage(),
                 'per_page'        => $reviews->perPage(),
                 'total'           => $reviews->total(),
@@ -66,17 +137,34 @@ class PerformanceReviewController extends Controller
                 // Data Performance Review (sudah difilter oleh Resource)
                 'data'            => PerformanceReviewResource::collection($reviews->items()),
 
-                // Navigation URLs
+                // URL navigasi
                 'first_page_url'  => $reviews->url(1),
                 'last_page_url'   => $reviews->url($reviews->lastPage()),
                 'next_page_url'   => $reviews->nextPageUrl(),
                 'prev_page_url'   => $reviews->previousPageUrl(),
                 'path'            => $reviews->path(),
 
-                // Pagination links untuk UI
+                // Link paginasi untuk UI
                 'links'           => $reviews->linkCollection()->toArray(),
+
+                // ========== BARU: Metadata Filter ==========
+                'filters' => [
+                    'search'        => $request->query('search'),
+                    'employee_id'   => $request->query('employee_id'),
+                    'reviewer_id'   => $request->query('reviewer_id'),
+                    'period'        => $request->query('period'),
+                    'year'          => $request->query('year'),
+                    'period_type'   => $request->query('period_type'),
+                    'department'    => $request->query('department'),
+                    'min_rating'    => $request->query('min_rating'),
+                    'max_rating'    => $request->query('max_rating'),
+                    'date_from'     => $request->query('date_from'),
+                    'date_to'       => $request->query('date_to'),
+                    'sort_by'       => $sortBy,
+                    'sort_order'    => $sortOrder,
+                ],
             ],
-        ]); 
+        ]);
     }
 
     /**
@@ -275,7 +363,7 @@ class PerformanceReviewController extends Controller
             'data'    => $review->fresh()->load(['employee.user', 'reviewer']),
         ]);
     }
-       
+
     /**
      * Delete performance review (Admin only)
      *

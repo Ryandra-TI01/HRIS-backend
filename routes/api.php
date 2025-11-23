@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\EmployeeController;
 use App\Http\Controllers\Api\AttendanceController;
 use App\Http\Controllers\Api\DashboardEmployeeController;
+use App\Http\Controllers\Api\DashboardAdminController;
 use App\Http\Controllers\Api\LeaveRequestController;
 use App\Http\Controllers\Api\PerformanceReviewController;
 use App\Http\Controllers\Api\SalarySlipController;
@@ -38,6 +39,11 @@ Route::middleware(['auth:api'])->group(function () {
     // Dashboard overview untuk employee (Employee only)
     Route::get('dashboard/employee', [DashboardEmployeeController::class, 'index'])
         ->middleware('role:employee');
+
+    // ========== Dashboard Admin HR ==========
+    // Dashboard overview untuk admin HR (Admin HR only)
+    Route::get('dashboard/admin', [DashboardAdminController::class, 'index'])
+        ->middleware('role:admin_hr');
 
     // ========== Employees ==========
     // Get list of managers (Admin HR & Manager only)

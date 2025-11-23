@@ -29,11 +29,11 @@ class DashboardEmployeeController extends Controller
         /** @var \App\Models\User $user */
         $user = Auth::guard('api')->user();
 
-        // Pastikan user adalah employee
-        if (!$user || !$user->isEmployee()) {
+        // Pastikan user adalah employee atau admin_hr
+        if (!$user || (!$user->isEmployee() && !$user->isAdminHr())) {
             return response()->json([
                 'success' => false,
-                'message' => 'Access denied. Employee role required.'
+                'message' => 'Access denied. Employee or Admin HR role required.'
             ], 403);
         }
 

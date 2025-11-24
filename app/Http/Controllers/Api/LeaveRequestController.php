@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\LeaveRequestResource;
 use App\Models\LeaveRequest;
 use App\Models\User;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
@@ -66,21 +67,150 @@ class LeaveRequestController extends Controller
     }
 
     /**
-     * Get leave requests for logged in employee
+     * Get leave requests for logged in employee (with pagination & filters)
+     *
+     * Query Parameters:
+     * - status: pending|approved|rejected
+     * - period: YYYY-MM (filter jika cuti tumpang tindih dengan bulan tersebut)
+     * - per_page: 5|10|20|50 (default: 10)
+     * - page: integer
      *
      * @return JsonResponse
      */
-    public function me(): JsonResponse
+    public function me(Request $request): JsonResponse
     {
         $employeeId = $this->resolveEmployeeId();
 
-        $leaveRequests = LeaveRequest::where('employee_id', $employeeId)
-            ->orderByDesc('created_at')
-            ->get();
+        $query = LeaveRequest::where('employee_id', $employeeId)
+            ->with('employee.user', 'reviewer')
+            ->orderByDesc('created_at');
+
+        // === FILTER STATUS ===
+        $appliedStatus = null;
+        if ($statusParam = $request->query('status')) {
+            $statusParam = strtolower(trim($statusParam));
+
+            $statusMap = [
+                'pending'   => LeaveStatus::PENDING->value,
+                'approved'  => LeaveStatus::APPROVED->value,
+                'rejected'  => LeaveStatus::REJECTED->value,
+                'approve'   => LeaveStatus::APPROVED->value,
+                'reject'    => LeaveStatus::REJECTED->value,
+            ];
+
+            if (array_key_exists($statusParam, $statusMap)) {
+                $query->where('status', $statusMap[$statusParam]);
+                $appliedStatus = $statusParam; // simpan untuk pesan
+            }
+        }
+
+        // === FILTER PERIODE (BULAN) ===
+        $appliedPeriod = null;
+        if ($yearMonth = $request->query('period')) {
+            if (preg_match('/^\d{4}-\d{2}$/', $yearMonth)) {
+                $startOfMonth = $yearMonth . '-01';
+                $endOfMonth   = Carbon::parse($startOfMonth)->endOfMonth()->format('Y-m-d');
+
+                $query->where(function ($q) use ($startOfMonth, $endOfMonth) {
+                    $q->whereBetween('start_date', [$startOfMonth, $endOfMonth])
+                    ->orWhereBetween('end_date',   [$startOfMonth, $endOfMonth])
+                    ->orWhereRaw('? BETWEEN start_date AND end_date', [$startOfMonth])
+                    ->orWhereRaw('? BETWEEN start_date AND end_date', [$endOfMonth]);
+                });
+
+                $appliedPeriod = $yearMonth;
+            }
+        }
+
+        // === HITUNG TOTAL SETELAH SEMUA FILTER (termasuk status) ===
+        $totalAfterFilter = $query->count();
+
+        // === KALAU ADA FILTER PERIOD, CEK DULU APAKAH ADA CUTI DI BULAN ITU (tanpa filter status) ===
+        $hasLeaveInPeriod = false;
+        $monthText = '';
+        if ($appliedPeriod) {
+            $monthText = Carbon::createFromFormat('Y-m', $appliedPeriod)->format('F Y');
+            $hasLeaveInPeriod = LeaveRequest::where('employee_id', $employeeId)
+                ->where(function ($q) use ($startOfMonth, $endOfMonth) {
+                    $q->whereBetween('start_date', [$startOfMonth, $endOfMonth])
+                    ->orWhereBetween('end_date',   [$startOfMonth, $endOfMonth])
+                    ->orWhereRaw('? BETWEEN start_date AND end_date', [$startOfMonth])
+                    ->orWhereRaw('? BETWEEN start_date AND end_date', [$endOfMonth]);
+                })
+                ->exists(); // cuma cek ada/tidak
+        }
+
+        // === JIKA DATA KOSONG ===
+        if ($totalAfterFilter === 0) {
+            if ($appliedPeriod) {
+                if (!$hasLeaveInPeriod) {
+                    // Benar-benar TIDAK ADA cuti sama sekali di bulan itu
+                    $message = "No leave requests found in {$monthText}.";
+                } else {
+                    // Ada cuti di bulan itu, tapi status yang dicari tidak ada
+                    $statusText = $appliedStatus === 'approve' ? 'approved' :
+                                ($appliedStatus === 'reject' ? 'rejected' : $appliedStatus);
+                    $message = "No {$statusText} leave requests found in {$monthText}.";
+                }
+            } elseif ($appliedStatus) {
+                $statusText = $appliedStatus === 'approve' ? 'approved' :
+                            ($appliedStatus === 'reject' ? 'rejected' : $appliedStatus);
+                $message = "No {$statusText} leave requests found.";
+            } else {
+                $message = "You have no leave requests yet.";
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => $message,
+                'data'    => [
+                    'current_page'   => 1,
+                    'per_page'       => (int) $request->query('per_page', 10),
+                    'total'          => 0,
+                    'last_page'      => 1,
+                    'from'           => null,
+                    'to'             => null,
+                    'data'           => [],
+                    'first_page_url' => $request->fullUrlWithQuery(['page' => 1]),
+                    'last_page_url'  => $request->fullUrlWithQuery(['page' => 1]),
+                    'next_page_url'  => null,
+                    'prev_page_url'  => null,
+                    'links'          => [],
+                    'filters' => [
+                        'status'   => $request->query('status'),
+                        'period'   => $request->query('period'),
+                        'per_page' => (int) $request->query('per_page', 10),
+                    ],
+                ]
+            ]);
+        }
+
+        // === JIKA ADA DATA → LANJUTKAN PAGINATION ===
+        $perPage       = min((int) $request->query('per_page', 10), 50);
+        $leaveRequests = $query->paginate($perPage);
 
         return response()->json([
             'success' => true,
-            'data'    => LeaveRequestResource::collection($leaveRequests),
+            'message' => 'Your leave requests retrieved successfully',
+            'data'    => [
+                'current_page'   => $leaveRequests->currentPage(),
+                'per_page'       => $leaveRequests->perPage(),
+                'total'          => $leaveRequests->total(),
+                'last_page'      => $leaveRequests->lastPage(),
+                'from'           => $leaveRequests->firstItem(),
+                'to'             => $leaveRequests->lastItem(),
+                'data'           => LeaveRequestResource::collection($leaveRequests->getCollection()),
+                'first_page_url' => $leaveRequests->url(1),
+                'last_page_url'  => $leaveRequests->url($leaveRequests->lastPage()),
+                'next_page_url'  => $leaveRequests->nextPageUrl(),
+                'prev_page_url'  => $leaveRequests->previousPageUrl(),
+                'links'          => $leaveRequests->linkCollection()->toArray(),
+                'filters' => [
+                    'status'   => $request->query('status'),
+                    'period'   => $request->query('period'),
+                    'per_page' => $perPage,
+                ],
+            ]
         ]);
     }
 

@@ -62,32 +62,34 @@ class DashboardEmployeeController extends Controller
             ->orderBy('date')
             ->get();
 
-        // Hitung total jam kerja dan hari hadir
-        $totalWorkHours = $attendances->sum(function ($attendance) {
-            return (float) $attendance->getOriginal('work_hour') ?? 0;
-        });
-
+        // Hitung jumlah hari hadir
         $daysPresent = $attendances->whereNotNull('check_in_time')->count();
 
-        // Siapkan data chart harian
-        $dailyChart = $attendances->map(function ($attendance) {
-            $workHourRaw = $attendance->getOriginal('work_hour') ?? 0;
-            $workHourDecimal = is_numeric($workHourRaw) ? (float) $workHourRaw : 0;
+        // === TOTAL JAM KERJA BULAN INI → FORMAT HH:MM ===
+        $totalMinutes = $attendances->sum(function ($att) {
+            // Pakai accessor $att->work_hour → otomatis jadi "07:11", "09:20", dll
+            if (!$att->work_hour || $att->work_hour === '00:00') {
+                return 0;
+            }
+            [$hours, $minutes] = explode(':', $att->work_hour);
+            return (int)$hours * 60 + (int)$minutes;
+        });
 
+        $totalHours   = floor($totalMinutes / 60);
+        $totalMins    = $totalMinutes % 60;
+        $totalWorkHoursFormatted = sprintf('%02d:%02d', $totalHours, $totalMins);
+        // Hasil: "47:55", "188:30", dll
+
+        // === DATA CHART HARIAN → SEMUA DALAM FORMAT HH:MM ===
+        $dailyChart = $attendances->map(function ($attendance) {
             return [
-                'date' => Carbon::parse($attendance->date)->format('Y-m-d'),
-                'work_hours' => round($workHourDecimal, 2),
-                'work_hours_formatted' => $attendance->work_hour, // Format HH:MM dari accessor
-                'day_name' => Carbon::parse($attendance->date)->format('D'),
-                'status' => $attendance->check_in_time ? 'present' : 'absent'
+                'date'                 => Carbon::parse($attendance->date)->format('Y-m-d'),
+                'work_hours'           => $attendance->work_hour ?? '00:00',           // HH:MM
+                'work_hours_formatted' => $attendance->work_hour ?? '00:00',           // HH:MM (sama)
+                'day_name'             => Carbon::parse($attendance->date)->format('D'),
+                'status'               => $attendance->check_in_time ? 'present' : 'absent'
             ];
         })->values()->toArray();
-
-        // Cards ringkasan kehadiran
-        $attendanceSummary = [
-            'total_work_hours_this_month' => round($totalWorkHours, 2),
-            'days_present_this_month' => $daysPresent,
-        ];
 
         return response()->json([
             'success' => true,
@@ -95,12 +97,15 @@ class DashboardEmployeeController extends Controller
             'data' => [
                 'personal_info' => $personalInfo,
                 'attendance_summary' => [
-                    'cards' => $attendanceSummary,
+                    'cards' => [
+                        'total_work_hours_this_month' => $totalWorkHoursFormatted, // ← "47:55"
+                        'days_present_this_month'     => $daysPresent,
+                    ],
                     'chart_work_hours_daily' => $dailyChart,
                 ],
                 'period_info' => [
                     'current_month' => $now->format('F Y'),
-                    'year_month' => $yearMonth,
+                    'year_month'    => $yearMonth,
                 ]
             ]
         ]);

@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\AttendanceResource;
 use App\Models\Attendance;
 use App\Models\User;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
@@ -123,27 +124,115 @@ class AttendanceController extends Controller
     }
 
     /**
-     * Get attendance history for logged in employee
+     * Get attendance history for logged in employee (with smart date filter + pagination)
+     *
+     * Query Parameters:
+     * - date: YYYY-MM (filter seluruh bulan) atau YYYY-MM-DD (filter tanggal spesifik)
+     *         Contoh:
+     *         ?date=2025-11     → seluruh November 2025
+     *         ?date=2025-11-15  → hanya tanggal 15 November 2025
+     * - per_page: 5|10|20|50 (default: 10)
+     * - page: integer
      *
      * @param Request $request
      * @return JsonResponse
      */
     public function me(Request $request): JsonResponse
     {
-        $user = Auth::guard('api')->user();
         $employeeId = $this->resolveAttendanceEmployeeId();
 
-        $query = Attendance::where('employee_id', $employeeId);
+        $query = Attendance::where('employee_id', $employeeId)
+            ->with('employee.user')
+            ->orderBy('date', 'desc');
 
-        if ($yearMonth = $request->query('month')) {
-            $query->inMonth($yearMonth);
+        $inputDate = $request->query('date'); // Bisa YYYY-MM atau YYYY-MM-DD
+        $appliedFilter = null;
+        $messagePrefix = 'You have no attendance records';
+
+        if ($inputDate) {
+            // Validasi format dasar (YYYY-MM atau YYYY-MM-DD)
+            if (preg_match('/^\d{4}-\d{2}$/', $inputDate)) {
+                // Format YYYY-MM → filter seluruh bulan
+                $query->whereYear('date', substr($inputDate, 0, 4))
+                    ->whereMonth('date', substr($inputDate, 5, 2));
+                $appliedFilter = $inputDate . ' (month)';
+                $monthText = Carbon::createFromFormat('Y-m', $inputDate)->format('F Y');
+                $messagePrefix = "No attendance records found in {$monthText}";
+
+            } elseif (preg_match('/^\d{4}-\d{2}-\d{2}$/', $inputDate)) {
+                // Format YYYY-MM-DD → filter berdasarkan check_in atau check_out di tanggal itu
+                $query->where(function ($q) use ($inputDate) {
+                    $q->whereDate('check_in_time', $inputDate)
+                    ->orWhereDate('check_out_time', $inputDate);
+                });
+                $appliedFilter = $inputDate . ' (specific date)';
+                $dateText = Carbon::parse($inputDate)->format('d F Y');
+                $messagePrefix = "No attendance records found on {$dateText}";
+            }
+            // Kalau format salah → akan diabaikan (bisa ditambah validasi kalau mau)
         }
 
-        $attendances = $query->orderBy('date', 'desc')->get();
+        // Cek apakah ada data
+        $totalFiltered = $query->count();
+
+        if ($totalFiltered === 0) {
+            return response()->json([
+                'success' => true,
+                'message' => $inputDate ? $messagePrefix . '.' : 'You have no attendance records yet.',
+                'data' => [
+                    'current_page'   => 1,
+                    'per_page'       => (int) $request->query('per_page', 10),
+                    'total'          => 0,
+                    'last_page'      => 1,
+                    'from'           => null,
+                    'to'             => null,
+                    'data'           => [],
+                    'first_page_url' => $request->fullUrlWithQuery(['page' => 1]),
+                    'last_page_url'  => $request->fullUrlWithQuery(['page' => 1]),
+                    'next_page_url'  => null,
+                    'prev_page_url'  => null,
+                    'links'         => [],
+                    'filters' => [
+                        'date'     => $request->query('date'),
+                        'per_page' => (int) $request->query('per_page', 10),
+                    ]
+                ]
+            ]);
+        }
+
+        // Pagination
+        $perPage     = min((int) $request->query('per_page', 10), 50);
+        $attendances = $query->paginate($perPage);
 
         return response()->json([
             'success' => true,
-            'data' => $attendances,
+            'message' => 'Your attendance history retrieved successfully',
+            'data' => [
+                // Pagination info
+                'current_page'   => $attendances->currentPage(),
+                'per_page'       => $attendances->perPage(),
+                'total'          => $attendances->total(),
+                'last_page'      => $attendances->lastPage(),
+                'from'           => $attendances->firstItem(),
+                'to'             => $attendances->lastItem(),
+
+                // Data
+                'data'           => AttendanceResource::collection($attendances->getCollection()),
+
+                // Navigation
+                'first_page_url' => $attendances->url(1),
+                'last_page_url'  => $attendances->url($attendances->lastPage()),
+                'next_page_url'  => $attendances->nextPageUrl(),
+                'prev_page_url'  => $attendances->previousPageUrl(),
+                'path'           => $attendances->path(),
+                'links'          => $attendances->linkCollection()->toArray(),
+
+                // Filters yang aktif
+                'filters' => [
+                    'date'     => $request->query('date'),
+                    'per_page' => $perPage,
+                ]
+            ]
         ]);
     }
 

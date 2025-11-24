@@ -172,32 +172,100 @@ class PerformanceReviewController extends Controller
      *
      * @param Request $request
      * @return JsonResponse
+     * * Query Parameters:
+     * - period: 
+     *     • YYYY     → semua review di tahun itu
+     *     • YYYY-MM  → semua review di tahun-bulan itu
+     * - per_page: 5|10|20|50 (default: 10)
+     * - page: integer
      * - Employee biasa → lihat review dirinya
      * - Admin HR → juga bisa lihat review dirinya sendiri
      */
     public function me(Request $request): JsonResponse
     {
-        /** @var \App\Models\User $user */
+        /** @var User $user */
         $user = Auth::guard('api')->user();
 
-        // Tentukan employee_id yang dipakai
-        $employeeId = $user->employee?->id ?? ($user->isAdminHr() ? $user->id : null);
+        abort_if(!$user->employee, 422, 'Employee profile not available');
 
-        abort_if(is_null($employeeId), 422, 'Employee profile not available');
+        $query = PerformanceReview::where('employee_id', $user->employee->id)
+            ->with(['employee.user', 'reviewer'])
+            ->orderByDesc('created_at');
 
-        $query = PerformanceReview::with(['employee.user', 'reviewer'])
-            ->where('employee_id', $employeeId);
+        $inputPeriod = $request->query('period');
+        $appliedFilter = null;
+        $message = 'You have no performance reviews yet.';
 
-        if ($period = $request->query('period')) {
-            $query->where('period', $period);
+        if ($inputPeriod) {
+            // 1. Hanya tahun: YYYY
+            if (preg_match('/^\d{4}$/', $inputPeriod)) {
+                $query->where('period', 'LIKE', $inputPeriod . '%');
+                $appliedFilter = $inputPeriod;
+                $message = "No performance reviews found in {$inputPeriod}.";
+            }
+            // 2. Tahun + periode/bulan: YYYY-Q1, YYYY-Q2, YYYY-06, dll
+            elseif (preg_match('/^\d{4}[-\/](Q[1-4]|[0-1]?\d)$/', $inputPeriod)) {
+                $query->where('period', $inputPeriod);
+                $appliedFilter = $inputPeriod;
+                $message = "No performance reviews found for period {$inputPeriod}.";
+            }
+            // Format lain → diabaikan (bisa ditambah validasi kalau mau)
         }
 
-        $reviews = $query->orderBy('created_at', 'desc')->get();
+        // Cek total data setelah filter
+        $totalFiltered = $query->count();
+
+        if ($totalFiltered === 0) {
+            return response()->json([
+                'success' => true,
+                'message' => $message,
+                'data' => [
+                    'current_page'   => 1,
+                    'per_page'       => (int) $request->query('per_page', 10),
+                    'total'          => 0,
+                    'last_page'      => 1,
+                    'from'           => null,
+                    'to'             => null,
+                    'data'           => [],
+                    'first_page_url' => $request->fullUrlWithQuery(['page' => 1]),
+                    'last_page_url'  => $request->fullUrlWithQuery(['page' => 1]),
+                    'next_page_url'  => null,
+                    'prev_page_url'  => null,
+                    'links'         => [],
+                    'filters' => [
+                        'period'   => $request->query('period'),
+                        'per_page' => (int) $request->query('per_page', 10),
+                    ],
+                ]
+            ]);
+        }
+
+        // Pagination
+        $perPage = min((int) $request->query('per_page', 10), 50);
+        $reviews = $query->paginate($perPage);
 
         return response()->json([
             'success' => true,
             'message' => 'Your performance reviews retrieved successfully',
-            'data'    => PerformanceReviewResource::collection($reviews),
+            'data' => [
+                'current_page'   => $reviews->currentPage(),
+                'per_page'       => $reviews->perPage(),
+                'total'          => $reviews->total(),
+                'last_page'      => $reviews->lastPage(),
+                'from'           => $reviews->firstItem(),
+                'to'             => $reviews->lastItem(),
+                'data'           => PerformanceReviewResource::collection($reviews->getCollection()),
+                'first_page_url' => $reviews->url(1),
+                'last_page_url'  => $reviews->url($reviews->lastPage()),
+                'next_page_url'  => $reviews->nextPageUrl(),
+                'prev_page_url'  => $reviews->previousPageUrl(),
+                'path'           => $reviews->path(),
+                'links'          => $reviews->linkCollection()->toArray(),
+                'filters' => [
+                    'period'   => $request->query('period'),
+                    'per_page' => $perPage,
+                ],
+            ]
         ]);
     }
 

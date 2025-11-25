@@ -104,40 +104,23 @@ class LeaveRequestController extends Controller
             }
         }
 
-        // === FILTER PERIODE (BULAN) ===
+        // === FILTER PERIODE (BULAN)
         $appliedPeriod = null;
         if ($yearMonth = $request->query('period')) {
-            if (preg_match('/^\d{4}-\d{2}$/', $yearMonth)) {
-                $startOfMonth = $yearMonth . '-01';
-                $endOfMonth   = Carbon::parse($startOfMonth)->endOfMonth()->format('Y-m-d');
-
-                $query->where(function ($q) use ($startOfMonth, $endOfMonth) {
-                    $q->whereBetween('start_date', [$startOfMonth, $endOfMonth])
-                    ->orWhereBetween('end_date',   [$startOfMonth, $endOfMonth])
-                    ->orWhereRaw('? BETWEEN start_date AND end_date', [$startOfMonth])
-                    ->orWhereRaw('? BETWEEN start_date AND end_date', [$endOfMonth]);
-                });
-
-                $appliedPeriod = $yearMonth;
-            }
+            $query->inPeriod($yearMonth);           
+            $appliedPeriod = $yearMonth;
         }
 
-        // === HITUNG TOTAL SETELAH SEMUA FILTER (termasuk status) ===
         $totalAfterFilter = $query->count();
 
-        // === KALAU ADA FILTER PERIOD, CEK DULU APAKAH ADA CUTI DI BULAN ITU (tanpa filter status) ===
+        // Cek apakah ada cuti sama sekali di bulan itu (tanpa filter status)
         $hasLeaveInPeriod = false;
         $monthText = '';
         if ($appliedPeriod) {
             $monthText = Carbon::createFromFormat('Y-m', $appliedPeriod)->format('F Y');
             $hasLeaveInPeriod = LeaveRequest::where('employee_id', $employeeId)
-                ->where(function ($q) use ($startOfMonth, $endOfMonth) {
-                    $q->whereBetween('start_date', [$startOfMonth, $endOfMonth])
-                    ->orWhereBetween('end_date',   [$startOfMonth, $endOfMonth])
-                    ->orWhereRaw('? BETWEEN start_date AND end_date', [$startOfMonth])
-                    ->orWhereRaw('? BETWEEN start_date AND end_date', [$endOfMonth]);
-                })
-                ->exists(); // cuma cek ada/tidak
+                ->inPeriod($appliedPeriod)         
+                ->exists();
         }
 
         // === JIKA DATA KOSONG ===

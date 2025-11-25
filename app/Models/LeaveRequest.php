@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\LeaveStatus;
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -94,18 +95,24 @@ class LeaveRequest extends BaseModel
     }
 
     /**
-     * Scope untuk filter berdasarkan periode bulan (format: YYYY-MM)
+     * Scope: Filter cuti yang BERIRISAN / TUMPANG TINDIH dengan bulan tertentu (YYYY-MM)
+     * Contoh: cuti 28 Des 2025 – 5 Jan 2026 → akan muncul di period=2025-12 DAN 2026-01
      */
     public function scopeInPeriod($query, ?string $yearMonth)
     {
-        if (!$yearMonth) {
+        if (!$yearMonth || !preg_match('/^\d{4}-\d{2}$/', $yearMonth)) {
             return $query;
         }
 
-        return $query->whereRaw(
-            "DATE_FORMAT(`start_date`, '%Y-%m') = ? OR DATE_FORMAT(`end_date`, '%Y-%m') = ?",
-            [$yearMonth, $yearMonth]
-        );
+        $startOfMonth = $yearMonth . '-01';
+        $endOfMonth   = Carbon::parse($startOfMonth)->endOfMonth()->format('Y-m-d');
+
+        return $query->where(function ($q) use ($startOfMonth, $endOfMonth) {
+            $q->whereBetween('start_date', [$startOfMonth, $endOfMonth])
+              ->orWhereBetween('end_date', [$startOfMonth, $endOfMonth])
+              ->orWhereRaw('? BETWEEN start_date AND end_date', [$startOfMonth])
+              ->orWhereRaw('? BETWEEN start_date AND end_date', [$endOfMonth]);
+        });
     }
 
     /**

@@ -12,6 +12,7 @@ use App\Http\Controllers\Api\LeaveRequestController;
 use App\Http\Controllers\Api\PerformanceReviewController;
 use App\Http\Controllers\Api\SalarySlipController;
 use App\Http\Controllers\Api\NotificationController;
+use App\Http\Controllers\Api\ProfileController;
 
 /*
 |--------------------------------------------------------------------------
@@ -35,6 +36,11 @@ Route::prefix('auth')->group(function () {
 
 // Protected Routes
 Route::middleware(['auth:api'])->group(function () {
+
+
+    // ========== PROFILE DIRI SENDIRI ==========
+    Route::get('me/profile', [ProfileController::class, 'show'])
+        ->middleware('role:admin_hr,manager,employee');
 
     // ========== Dashboard Employee ==========
     // Dashboard overview untuk employee (Admin HR, Employee)

@@ -12,10 +12,10 @@ class UserSeeder extends Seeder
     /**
      * Run the database seeds.
      *
-     * Membuat 15 user:
+     * Membuat 50 user:
      * - 1 Admin HR: Eko Muchamad Haryono
      * - 4 Manager: Raka, Yossy, Dina, Ahmad
-     * - 10 Employee: Ryandra, Octaviani, Budi, Sari, Andi, Lisa, Doni, Maya, Ricky, Fitri
+     * - 45 Employee: Ryandra, Octaviani, Budi, dst (employee1-45)
      */
     public function run(): void
     {
@@ -127,10 +127,32 @@ class UserSeeder extends Seeder
             ],
         ];
 
+        // Tambahan 35 employees baru (employee11-45)
+        $additionalEmployees = [
+            'Agus Prasetyo', 'Indah Permatasari', 'Bayu Nugroho', 'Sinta Maharani', 'Joko Sutrisno',
+            'Dewi Sartika', 'Hendra Wijaya', 'Nina Anggraini', 'Rizki Ramadhan', 'Putri Wulandari',
+            'Arief Budiman', 'Lestari Rahayu', 'Farid Setiawan', 'Mega Oktaviani', 'Dimas Pratama',
+            'Rini Susanti', 'Eko Saputra', 'Yuni Kartika', 'Wahyu Hidayat', 'Citra Dewi',
+            'Bambang Santoso', 'Sari Melati', 'Andi Firmansyah', 'Ratna Sari', 'Irwan Setiadi',
+            'Wulan Dari', 'Teguh Prasetyo', 'Ayu Lestari', 'Hendro Gunawan', 'Nia Ramadhani',
+            'Agung Wibowo', 'Siska Amelia', 'Dodi Hermawan', 'Vina Safitri', 'Rangga Pratama'
+        ];
+
+        foreach ($additionalEmployees as $index => $name) {
+            $employeeNumber = $index + 11; // Start from employee11
+            $users[] = [
+                'name' => $name,
+                'email' => "employee{$employeeNumber}@hris.com",
+                'password' => Hash::make('password123'),
+                'role' => Role::EMPLOYEE,
+                'status_active' => true,
+            ];
+        }
+
         foreach ($users as $userData) {
             User::create($userData);
         }
 
-        $this->command->info('✅ 15 Users created successfully (1 Admin HR + 4 Managers + 10 Employees)!');
+        $this->command->info('✅ 50 Users created successfully (1 Admin HR + 4 Managers + 45 Employees)!');
     }
 }

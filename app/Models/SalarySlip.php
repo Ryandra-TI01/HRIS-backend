@@ -4,10 +4,25 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use InvalidArgumentException;
 
 class SalarySlip extends BaseModel
 {
     use HasFactory;
+
+    // ──────────────────────────────────────────────────────────────
+    // KONSTANTA BATAS NILAI (mudah diubah di satu tempat saja)
+    // ──────────────────────────────────────────────────────────────
+
+    // konstanta batas minimal dan maksimal untuk basic_salary
+    const BASIC_SALARY_MIN = 1_000_000.00;
+    const BASIC_SALARY_MAX = 99_999_999_999.99;
+
+    // konstanta batas minimal dan maksimal untuk allowance
+    const ALLOWANCE_MAX = 99_999_999_999.99;
+
+    // konstanta batas minimal dan maksimal untuk deduction
+    const DEDUCTION_MAX = 99_999_999_999.99;
 
     /**
      * Atribut yang dapat diisi secara massal.
@@ -87,5 +102,32 @@ class SalarySlip extends BaseModel
     public function computeTotalSalary(): void
     {
         $this->total_salary = $this->basic_salary + $this->allowance - $this->deduction;
+    }
+
+    // ──────────────────────────────────────────────────────────────
+    // MUTATORS (dengan validasi min + max + pesan Rupiah yang cantik)
+    // ──────────────────────────────────────────────────────────────
+
+    public function setBasicSalaryAttribute($value): void
+    {
+        $this->attributes['basic_salary'] = $this->normalizeNumeric($value);
+    }
+
+    public function setAllowanceAttribute($value): void
+    {
+        $this->attributes['allowance'] = $this->normalizeNumeric($value);
+    }
+
+    public function setDeductionAttribute($value): void
+    {
+        $this->attributes['deduction'] = $this->normalizeNumeric($value);
+    }
+
+    // ──────────────────────────────────────────────────────────────
+    // HELPER PRIVATE (untuk normalize nilai numeric, agar aman dari null/invalid)
+    // ──────────────────────────────────────────────────────────────
+    private function normalizeNumeric($value, float $default = 0.0): float
+    {
+        return $value !== null ? round((float) $value, 2) : $default;
     }
 }

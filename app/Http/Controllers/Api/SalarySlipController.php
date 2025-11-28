@@ -7,9 +7,13 @@ use App\Http\Resources\SalarySlipResource;
 use App\Models\SalarySlip;
 use App\Models\User;
 use Carbon\Carbon;
+use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Validator;
+use InvalidArgumentException;
 
 class SalarySlipController extends Controller
 {
@@ -207,36 +211,59 @@ class SalarySlipController extends Controller
         // Validasi input yang fleksibel tapi tetap aman
         // employee_id: harus ada di tabel employees
         // period_month: format bebas (bisa YYYY-MM, MM-YYYY, atau format lain)
-        // basic_salary: wajib, minimal 0 (tidak ada batas maksimal)
-        // allowance & deduction: opsional, minimal 0 jika diisi
+        // basic_salary: wajib, min & max sesuai konstanta
+        // allowance: opsional, min & max sesuai konstanta
+        // deduction: opsional, min & max sesuai konstanta
         // remarks: opsional, panjang bebas untuk catatan
-        $validated = $request->validate([
+        // Validator untuk collect multiple errors
+        $validator = Validator::make($request->all(), [
             'employee_id' => 'required|exists:employees,id',
-            'period_month' => 'required|string|max:20',
-            'basic_salary' => 'required|numeric|min:0',
-            'allowance' => 'nullable|numeric|min:0',
-            'deduction' => 'nullable|numeric|min:0',
+            'period_month' => 'required|string|max:50',
+            'basic_salary' => [
+                'required',
+                'numeric',
+                'min:' . SalarySlip::BASIC_SALARY_MIN,
+                'max:' . SalarySlip::BASIC_SALARY_MAX,
+            ],
+            'allowance' => [
+                'nullable',
+                'numeric',
+                'max:' . SalarySlip::ALLOWANCE_MAX,
+            ],
+            'deduction' => [
+                'nullable',
+                'numeric',
+                'max:' . SalarySlip::DEDUCTION_MAX,
+            ],
             'remarks' => 'nullable|string',
+        ], [
+            'basic_salary.min' => 'Minimum basic salary Rp ' . number_format(SalarySlip::BASIC_SALARY_MIN, 0, ',', '.') . ',',
+            'basic_salary.max' => 'Maximum basic salary Rp ' . number_format(SalarySlip::BASIC_SALARY_MAX, 0, ',', '.') . '.',
+            'allowance.max'    => 'Maximum allowance Rp ' . number_format(SalarySlip::ALLOWANCE_MAX, 0, ',', '.') . '.',
+            'deduction.max'    => 'Maximum deduction Rp ' . number_format(SalarySlip::DEDUCTION_MAX, 0, ',', '.') . '.',
         ]);
 
-        // Validasi duplikasi: Satu employee hanya boleh punya satu slip per periode
-        // Ini sesuai dengan constraint 'unique_employee_period' di database
-        // Mencegah error SQL constraint violation saat insert
+        $validated = $validator->validated();
+
+        // Cek duplikasi slip dan tambahkan ke errors validator jika ada
         $existingSlip = SalarySlip::where('employee_id', $validated['employee_id'])
                                  ->where('period_month', $validated['period_month'])
                                  ->first();
 
         if ($existingSlip) {
+            $validator->errors()->add('period_month', 'A salary slip for this period has already been created');
+        }
+
+        // Return satu response untuk semua error (numeric + duplikasi)
+        if ($validator->errors()->any()) {
             return response()->json([
                 'success' => false,
-                'message' => 'Salary slip for this employee and period already exists',
-                'errors' => [
-                    'period_month' => ['A salary slip for this period has already been created']
-                ]
+                'message' => 'Terdapat kesalahan pada input.',
+                'errors' => $validator->errors()
             ], 422);
         }
 
-        try {
+        try { 
             // Siapkan data dengan nilai default
             $slipData = [
                 'employee_id' => $validated['employee_id'],
@@ -266,10 +293,16 @@ class SalarySlipController extends Controller
                 'data' => new SalarySlipResource($slip),
             ], 201);
 
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
+            Log::error('Create salary slip failed: ' . $e->getMessage(), [
+                'user_id' => $user->id,
+                'request_data' => $request->all(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to create salary slip: ' . $e->getMessage(),
+                'message' => 'Gagal membuat slip gaji. Silakan coba lagi.'
             ], 500);
         }
     }
@@ -318,17 +351,36 @@ class SalarySlipController extends Controller
         $slip = SalarySlip::findOrFail($id);
 
         // Validasi input untuk update yang lebih fleksibel
-        $validated = $request->validate([
-            'period_month' => 'sometimes|string|max:50', // Format bebas
-            'basic_salary' => 'sometimes|numeric|min:0',
-            'allowance' => 'sometimes|numeric|min:0',
-            'deduction' => 'sometimes|numeric|min:0',
+        $validator = Validator::make($request->all(), [
+            'employee_id' => 'required|exists:employees,id',
+            'period_month' => 'required|string|max:50',
+            'basic_salary' => [
+                'required',
+                'numeric',
+                'min:' . SalarySlip::BASIC_SALARY_MIN,
+                'max:' . SalarySlip::BASIC_SALARY_MAX,
+            ],
+            'allowance' => [
+                'nullable',
+                'numeric',
+                'max:' . SalarySlip::ALLOWANCE_MAX,
+            ],
+            'deduction' => [
+                'nullable',
+                'numeric',
+                'max:' . SalarySlip::DEDUCTION_MAX,
+            ],
             'remarks' => 'nullable|string',
+        ], [
+            'basic_salary.min' => 'Minimum basic salary Rp ' . number_format(SalarySlip::BASIC_SALARY_MIN, 0, ',', '.') . '.',
+            'basic_salary.max' => 'Maximum basic salary Rp ' . number_format(SalarySlip::BASIC_SALARY_MAX, 0, ',', '.') . '.',
+            'allowance.max'    => 'Maximum allowance Rp ' . number_format(SalarySlip::ALLOWANCE_MAX, 0, ',', '.') . '.',
+            'deduction.max'    => 'Maximum deduction Rp ' . number_format(SalarySlip::DEDUCTION_MAX, 0, ',', '.') . '.',
         ]);
 
-        // Validasi duplikasi saat update period_month
-        // Pastikan tidak bentrok dengan slip lain di periode baru
-        // Exclude slip yang sedang diedit (id != current slip)
+        $validated = $validator->validated();
+
+        // Validasi duplikasi saat update period_month dan tambahkan ke errors validator jika ada
         if (isset($validated['period_month']) && $validated['period_month'] !== $slip->period_month) {
             $existingSlip = SalarySlip::where('employee_id', $slip->employee_id)
                                      ->where('period_month', $validated['period_month'])
@@ -336,14 +388,17 @@ class SalarySlipController extends Controller
                                      ->first();
 
             if ($existingSlip) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Salary slip for this employee and period already exists',
-                    'errors' => [
-                        'period_month' => ['This period already has a salary slip for the same employee']
-                    ]
-                ], 422);
+                $validator->errors()->add('period_month', 'This period already has a salary slip for the same employee');
             }
+        }
+
+        // Return satu response untuk semua error (numeric + duplikasi)
+        if ($validator->errors()->any()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Terdapat kesalahan pada input.',
+                'errors' => $validator->errors()
+            ], 422);
         }
 
         try {
@@ -362,14 +417,20 @@ class SalarySlipController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'Salary slip updated successfully',
+                'message' => 'Salary slip created successfully',
                 'data' => new SalarySlipResource($slip),
+            ], 201);
+
+        } catch (Exception $e) {
+            Log::error('Create salary slip failed: ' . $e->getMessage(), [
+                'user_id' => $user->id,
+                'request_data' => $request->all(),
+                'trace' => $e->getTraceAsString(),
             ]);
 
-        } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to update salary slip: ' . $e->getMessage(),
+                'message' => 'Gagal membuat slip gaji. Silakan coba lagi.'
             ], 500);
         }
     }

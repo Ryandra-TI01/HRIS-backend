@@ -130,4 +130,71 @@ class SalarySlip extends BaseModel
     {
         return $value !== null ? round((float) $value, 2) : $default;
     }
+
+    /**
+     * Scope untuk filter slip gaji berdasarkan kata kunci di berbagai field
+     * Mencari di: period_month, basic_salary, allowance, deduction, total_salary, remarks
+     *
+     * @param mixed $query
+     * @param mixed $term
+     * @return mixed
+     */
+    public function scopeSearch($query, ?string $term)
+    {
+        if (empty($term)) {
+            return $query;
+        }
+
+        return $query->where(function ($q) use ($term) {
+            $q->where('period_month', 'like', "%{$term}%")
+                ->orWhere('basic_salary', 'like', "%{$term}%")
+                ->orWhere('allowance', 'like', "%{$term}%")
+                ->orWhere('deduction', 'like', "%{$term}%")
+                ->orWhere('total_salary', 'like', "%{$term}%")
+                ->orWhere('remarks', 'like', "%{$term}%")
+                ->orWhereHas('employee', function ($employeeQuery) use ($term) {
+                    $employeeQuery
+                        ->where('employee_code', 'like', "%{$term}%")
+                        ->orWhere('position', 'like', "%{$term}%")
+                        ->orWhere('department', 'like', "%{$term}%")
+                        ->orWhereHas('user', function ($userQuery) use ($term) {
+                            $userQuery
+                                ->where('name', 'like', "%{$term}%")
+                                ->orWhere('email', 'like', "%{$term}%");
+                        });
+                });
+        });
+    }
+    /**
+     * Scope untuk filter slip gaji berdasarkan range nilai basic salary
+     *
+     * @param mixed $query
+     * @param float|null $salaryFrom nilai basic salary terendah
+     * @param float|null $salaryTo nilai basic salary tertinggi
+     * @return mixed
+     */
+    public function scopeFilterBasicSalary($query, ?float $salaryFrom, ?float $salaryTo)
+    {
+        return $query->when($salaryFrom, function ($q) use ($salaryFrom) {
+            $q->where('basic_salary', '>=', $salaryFrom);
+        })
+            ->when($salaryTo, function ($q) use ($salaryTo) {
+                $q->where('basic_salary', '<=', $salaryTo);
+            });
+    }
+    /**
+     * Scope untuk filter slip gaji berdasarkan range nilai total salary
+     *
+     * @param mixed $query
+     * @param float|null $from nilai total salary terendah
+     * @param float|null $to nilai total salary tertinggi
+     * @return mixed
+     */
+    public function scopeFilterTotalSalary($query, ?float $from, ?float $to)
+    {
+        return $query->when($from, fn($q) => $q->where('total_salary', '>=', $from))
+            ->when($to, fn($q) => $q->where('total_salary', '<=', $to));
+    }
+
+
 }

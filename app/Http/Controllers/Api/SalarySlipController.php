@@ -38,6 +38,10 @@ class SalarySlipController extends Controller
             abort_if(!$user->employee, 422, 'Employee profile not available');
             $query->where('employee_id', $user->employee->id);
         }
+        // Pencarian global di berbagai field
+        if ($search = $request->query('search')) {
+            $query->search($search);
+        }
 
         // Filter berdasarkan employee_id (opsional)
         if ($employeeId = $request->query('employee_id')) {
@@ -48,14 +52,25 @@ class SalarySlipController extends Controller
         if ($period = $request->query('period')) {
             $query->where('period_month', 'like', "%{$period}%");
         }
+        // Filter Basic Salary (range)
+        $query->filterBasicSalary(
+            $request->query('salary_from'),
+            $request->query('salary_to')
+        );
+
+        // Filter Total Salary (range)
+        $query->filterTotalSalary(
+            $request->query('total_from'),
+            $request->query('total_to')
+        );
 
         // Validasi dan pengaturan pagination
         $perPage = min($request->query('per_page', 10), 100);
 
         // Jalankan query dengan pagination, urutkan terbaru dulu
         $salarySlips = $query->orderBy('period_month', 'desc')
-                           ->orderBy('created_at', 'desc')
-                           ->paginate($perPage);
+            ->orderBy('created_at', 'desc')
+            ->paginate($perPage);
 
         // Response JSON lengkap & rapi
         return response()->json([
@@ -63,25 +78,25 @@ class SalarySlipController extends Controller
             'message' => 'Salary slip data retrieved successfully',
             'data' => [
                 // Pagination info
-                'current_page'   => $salarySlips->currentPage(),
-                'per_page'       => $salarySlips->perPage(),
-                'total'          => $salarySlips->total(),
-                'last_page'      => $salarySlips->lastPage(),
-                'from'           => $salarySlips->firstItem(),
-                'to'             => $salarySlips->lastItem(),
+                'current_page' => $salarySlips->currentPage(),
+                'per_page' => $salarySlips->perPage(),
+                'total' => $salarySlips->total(),
+                'last_page' => $salarySlips->lastPage(),
+                'from' => $salarySlips->firstItem(),
+                'to' => $salarySlips->lastItem(),
 
                 // Data slip gaji (sudah difilter oleh Resource)
-                'data'           => SalarySlipResource::collection($salarySlips->items()),
+                'data' => SalarySlipResource::collection($salarySlips->items()),
 
                 // Navigation URLs
                 'first_page_url' => $salarySlips->url(1),
-                'last_page_url'  => $salarySlips->url($salarySlips->lastPage()),
-                'next_page_url'  => $salarySlips->nextPageUrl(),
-                'prev_page_url'  => $salarySlips->previousPageUrl(),
-                'path'           => $salarySlips->path(),
+                'last_page_url' => $salarySlips->url($salarySlips->lastPage()),
+                'next_page_url' => $salarySlips->nextPageUrl(),
+                'prev_page_url' => $salarySlips->previousPageUrl(),
+                'path' => $salarySlips->path(),
 
                 // Pagination links untuk UI
-                'links'          => $salarySlips->linkCollection()->toArray(),
+                'links' => $salarySlips->linkCollection()->toArray(),
             ],
         ]);
     }
@@ -91,7 +106,7 @@ class SalarySlipController extends Controller
      *
      * ?period=2025        → semua slip tahun 2025
      * ?period=2025-11     → hanya November 2025
-    */
+     */
     public function me(Request $request): JsonResponse
     {
         /** @var User $user */
@@ -128,8 +143,7 @@ class SalarySlipController extends Controller
                     $nice = Carbon::createFromFormat('Y-m', $periodInput)->format('F Y');
                     $message = "No salary slips found for period {$nice}.";
                 }
-            }
-            else {
+            } else {
                 return response()->json([
                     'success' => false,
                     'message' => 'Invalid period format. Use YYYY or YYYY-MM (e.g., 2025 or 2025-11)'
@@ -145,52 +159,52 @@ class SalarySlipController extends Controller
                 'success' => true,
                 'message' => $message,
                 'data' => [
-                    'current_page'   => 1,
-                    'per_page'       => (int)$request->query('per_page', 10),
-                    'total'          => 0,
-                    'last_page'      => 1,
-                    'from'           => null,
-                    'to'             => null,
-                    'data'           => [],
-                    'first_page_url' => $request->fullUrlWithQuery(['page' => 1]),
-                    'last_page_url'  => $request->fullUrlWithQuery(['page' => 1]),
-                    'next_page_url'  => null,
-                    'prev_page_url'     => null,
-                    'links'          => [],
-                    'filters' => [
-                        'period'   => $periodInput,
-                        'per_page' => (int)$request->query('per_page', 10),
-                    ],
-                ]
+                        'current_page' => 1,
+                        'per_page' => (int) $request->query('per_page', 10),
+                        'total' => 0,
+                        'last_page' => 1,
+                        'from' => null,
+                        'to' => null,
+                        'data' => [],
+                        'first_page_url' => $request->fullUrlWithQuery(['page' => 1]),
+                        'last_page_url' => $request->fullUrlWithQuery(['page' => 1]),
+                        'next_page_url' => null,
+                        'prev_page_url' => null,
+                        'links' => [],
+                        'filters' => [
+                                'period' => $periodInput,
+                                'per_page' => (int) $request->query('per_page', 10),
+                            ],
+                    ]
             ]);
         }
 
         // Pagination
-        $perPage = min((int)$request->query('per_page', 10), 50);
+        $perPage = min((int) $request->query('per_page', 10), 50);
         $slips = $query->paginate($perPage);
 
         return response()->json([
             'success' => true,
             'message' => 'Your salary slips retrieved successfully',
             'data' => [
-                'current_page'       => $slips->currentPage(),
-                'per_page'       => $slips->perPage(),
-                'total'          => $slips->total(),
-                'last_page'      => $slips->lastPage(),
-                'from'           => $slips->firstItem(),
-                'to'             => $slips->lastItem(),
-                'data'           => SalarySlipResource::collection($slips->getCollection()),
-                'first_page_url' => $slips->url(1),
-                'last_page_url'  => $slips->url($slips->lastPage()),
-                'next_page_url'  => $slips->nextPageUrl(),
-                'prev_page_url'  => $slips->previousPageUrl(),
-                'path'           => $slips->path(),
-                'links'          => $slips->linkCollection()->toArray(),
-                'filters' => [
-                    'period'   => $periodInput,
-                    'per_page' => $perPage,
-                ],
-            ]
+                    'current_page' => $slips->currentPage(),
+                    'per_page' => $slips->perPage(),
+                    'total' => $slips->total(),
+                    'last_page' => $slips->lastPage(),
+                    'from' => $slips->firstItem(),
+                    'to' => $slips->lastItem(),
+                    'data' => SalarySlipResource::collection($slips->getCollection()),
+                    'first_page_url' => $slips->url(1),
+                    'last_page_url' => $slips->url($slips->lastPage()),
+                    'next_page_url' => $slips->nextPageUrl(),
+                    'prev_page_url' => $slips->previousPageUrl(),
+                    'path' => $slips->path(),
+                    'links' => $slips->linkCollection()->toArray(),
+                    'filters' => [
+                            'period' => $periodInput,
+                            'per_page' => $perPage,
+                        ],
+                ]
         ]);
     }
 
@@ -220,11 +234,11 @@ class SalarySlipController extends Controller
             'employee_id' => 'required|exists:employees,id',
             'period_month' => 'required|string|max:50',
             'basic_salary' => [
-                'required',
-                'numeric',
-                'min:' . SalarySlip::BASIC_SALARY_MIN,
-                'max:' . SalarySlip::BASIC_SALARY_MAX,
-            ],
+                    'required',
+                    'numeric',
+                    'min:' . SalarySlip::BASIC_SALARY_MIN,
+                    'max:' . SalarySlip::BASIC_SALARY_MAX,
+                ],
             'allowance' => [
                 'nullable',
                 'numeric',
@@ -239,16 +253,16 @@ class SalarySlipController extends Controller
         ], [
             'basic_salary.min' => 'Minimum basic salary Rp ' . number_format(SalarySlip::BASIC_SALARY_MIN, 0, ',', '.') . ',',
             'basic_salary.max' => 'Maximum basic salary Rp ' . number_format(SalarySlip::BASIC_SALARY_MAX, 0, ',', '.') . '.',
-            'allowance.max'    => 'Maximum allowance Rp ' . number_format(SalarySlip::ALLOWANCE_MAX, 0, ',', '.') . '.',
-            'deduction.max'    => 'Maximum deduction Rp ' . number_format(SalarySlip::DEDUCTION_MAX, 0, ',', '.') . '.',
+            'allowance.max' => 'Maximum allowance Rp ' . number_format(SalarySlip::ALLOWANCE_MAX, 0, ',', '.') . '.',
+            'deduction.max' => 'Maximum deduction Rp ' . number_format(SalarySlip::DEDUCTION_MAX, 0, ',', '.') . '.',
         ]);
 
         $validated = $validator->validated();
 
         // Cek duplikasi slip dan tambahkan ke errors validator jika ada
         $existingSlip = SalarySlip::where('employee_id', $validated['employee_id'])
-                                 ->where('period_month', $validated['period_month'])
-                                 ->first();
+            ->where('period_month', $validated['period_month'])
+            ->first();
 
         if ($existingSlip) {
             $validator->errors()->add('period_month', 'A salary slip for this period has already been created');
@@ -263,7 +277,7 @@ class SalarySlipController extends Controller
             ], 422);
         }
 
-        try { 
+        try {
             // Siapkan data dengan nilai default
             $slipData = [
                 'employee_id' => $validated['employee_id'],
@@ -355,11 +369,11 @@ class SalarySlipController extends Controller
             'employee_id' => 'required|exists:employees,id',
             'period_month' => 'required|string|max:50',
             'basic_salary' => [
-                'required',
-                'numeric',
-                'min:' . SalarySlip::BASIC_SALARY_MIN,
-                'max:' . SalarySlip::BASIC_SALARY_MAX,
-            ],
+                    'required',
+                    'numeric',
+                    'min:' . SalarySlip::BASIC_SALARY_MIN,
+                    'max:' . SalarySlip::BASIC_SALARY_MAX,
+                ],
             'allowance' => [
                 'nullable',
                 'numeric',
@@ -374,8 +388,8 @@ class SalarySlipController extends Controller
         ], [
             'basic_salary.min' => 'Minimum basic salary Rp ' . number_format(SalarySlip::BASIC_SALARY_MIN, 0, ',', '.') . '.',
             'basic_salary.max' => 'Maximum basic salary Rp ' . number_format(SalarySlip::BASIC_SALARY_MAX, 0, ',', '.') . '.',
-            'allowance.max'    => 'Maximum allowance Rp ' . number_format(SalarySlip::ALLOWANCE_MAX, 0, ',', '.') . '.',
-            'deduction.max'    => 'Maximum deduction Rp ' . number_format(SalarySlip::DEDUCTION_MAX, 0, ',', '.') . '.',
+            'allowance.max' => 'Maximum allowance Rp ' . number_format(SalarySlip::ALLOWANCE_MAX, 0, ',', '.') . '.',
+            'deduction.max' => 'Maximum deduction Rp ' . number_format(SalarySlip::DEDUCTION_MAX, 0, ',', '.') . '.',
         ]);
 
         $validated = $validator->validated();
@@ -383,9 +397,9 @@ class SalarySlipController extends Controller
         // Validasi duplikasi saat update period_month dan tambahkan ke errors validator jika ada
         if (isset($validated['period_month']) && $validated['period_month'] !== $slip->period_month) {
             $existingSlip = SalarySlip::where('employee_id', $slip->employee_id)
-                                     ->where('period_month', $validated['period_month'])
-                                     ->where('id', '!=', $slip->id)
-                                     ->first();
+                ->where('period_month', $validated['period_month'])
+                ->where('id', '!=', $slip->id)
+                ->first();
 
             if ($existingSlip) {
                 $validator->errors()->add('period_month', 'This period already has a salary slip for the same employee');

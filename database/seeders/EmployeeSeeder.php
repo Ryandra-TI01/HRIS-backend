@@ -5,6 +5,7 @@ namespace Database\Seeders;
 use App\Models\User;
 use App\Models\Employee;
 use App\Enums\EmploymentStatus;
+use Carbon\Carbon;
 use Illuminate\Database\Seeder;
 
 class EmployeeSeeder extends Seeder
@@ -178,10 +179,53 @@ class EmployeeSeeder extends Seeder
             }
         }
 
-        foreach ($employees as $employeeData) {
-            Employee::create($employeeData);
+        foreach ($employees as $index => $employeeData) {
+            $employee = Employee::create($employeeData);
+
+            // Variasi created_at untuk chart "employees per month" yang lebih menarik
+            // Distribusi: 12 bulan terakhir dengan pola realistis (lebih banyak employee baru di bulan-bulan tertentu)
+            if ($index < 5) {
+                // Admin HR dan Managers: dibuat di awal tahun (Jan-Mar 2025)
+                $createdMonth = rand(1, 3); // Januari - Maret 2025
+                $employee->created_at = Carbon::create(2025, $createdMonth, rand(1, 28), rand(8, 17), rand(0, 59));
+            } else {
+                // Employees: distribusi realistis sepanjang tahun dengan pola hiring (Jan-Nov)
+                $monthWeights = [
+                    1 => 8,   // Januari (hiring awal tahun)
+                    2 => 6,   // Februari
+                    3 => 10,  // Maret (hiring puncak Q1)
+                    4 => 4,   // April
+                    5 => 3,   // Mei
+                    6 => 7,   // Juni (mid-year hiring)
+                    7 => 8,   // Juli (fresh graduate season)
+                    8 => 9,   // Agustus (fresh graduate season)
+                    9 => 12,  // September (puncak hiring H2)
+                    10 => 10, // Oktober (hiring tinggi)
+                    11 => 18, // November (hiring akhir tahun) - PALING TINGGI
+                ];
+
+                // Weighted random selection untuk bulan
+                $totalWeight = array_sum($monthWeights);
+                $randomValue = rand(1, $totalWeight);
+
+                $currentWeight = 0;
+                $selectedMonth = 11; // Default November
+
+                foreach ($monthWeights as $month => $weight) {
+                    $currentWeight += $weight;
+                    if ($randomValue <= $currentWeight) {
+                        $selectedMonth = $month;
+                        break;
+                    }
+                }
+
+                // Set created_at dengan bulan terpilih
+                $employee->created_at = Carbon::create(2025, $selectedMonth, rand(1, 28), rand(8, 17), rand(0, 59));
+            }
+
+            $employee->save();
         }
 
-        $this->command->info('✅ 50 Employees created successfully (1 Admin HR + 4 Managers + 45 Employees)!');
+        $this->command->info('✅ 50 Employees created successfully with varied created_at dates!');
     }
 }

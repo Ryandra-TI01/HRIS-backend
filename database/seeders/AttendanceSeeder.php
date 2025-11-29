@@ -46,38 +46,60 @@ class AttendanceSeeder extends Seeder
 
             foreach ($months as $monthData) {
                 $daysInMonth = Carbon::create($monthData['year'], $monthData['month'])->daysInMonth;
-                
-                // Monthly behavior adjustments
+
+                // Penyesuaian perilaku bulanan
                 $monthlyFactor = 1.0;
-                $absentRate = 5; // Base 5% absent rate
-                
-                if ($monthData['month'] == 9) { // September - back to work
-                    $monthlyFactor = 0.9; // Slightly less punctual
-                    $absentRate = 7; // Higher absent rate (post-vacation)
-                } elseif ($monthData['month'] == 10) { // October - productive month
-                    $monthlyFactor = 1.1; // More productive
-                    $absentRate = 3; // Lower absent rate
-                } elseif ($monthData['month'] == 11) { // November - holiday preparation
-                    $monthlyFactor = 0.95; // Slightly distracted
-                    $absentRate = 8; // Higher absent rate (holiday prep)
+                $absentRate = 5; // Tingkat absen dasar 5%
+
+                if ($monthData['month'] == 9) { // September - kembali kerja setelah liburan
+                    $monthlyFactor = 0.9; // Sedikit kurang tepat waktu
+                    $absentRate = 7; // Tingkat absen lebih tinggi (pasca liburan)
+                } elseif ($monthData['month'] == 10) { // Oktober - bulan produktif
+                    $monthlyFactor = 1.1; // Lebih produktif
+                    $absentRate = 3; // Tingkat absen lebih rendah
+                } elseif ($monthData['month'] == 11) { // November - persiapan liburan
+                    $monthlyFactor = 0.95; // Sedikit terdistraksi
+                    $absentRate = 8; // Tingkat absen lebih tinggi (persiapan liburan)
                 }
-                
+
                 for ($day = 1; $day <= $daysInMonth; $day++) {
                     $date = Carbon::create($monthData['year'], $monthData['month'], $day);
 
-                    // Skip weekend (Sabtu & Minggu)
+                    // Lewati hari weekend (Sabtu & Minggu)
                     if ($date->isWeekend()) {
                         continue;
                     }
 
-                    // Monthly adjusted absent rate
+                    // Tingkat absen yang disesuaikan per bulan
                     if (rand(1, 100) <= $absentRate) {
                         continue;
-                    }                    // Variasi check-in berdasarkan punctuality level + monthly factor
-                    $latenessPenalty = (1 - $monthlyFactor) * 15; // Max 15 min delay
-                    
+                    }
+
+                    // *** POLA NAIK-TURUN JAM KERJA ***
+                    // Buat jam kerja bervariasi sepanjang bulan dengan pola realistis
+                    $dayOfMonth = $day;
+                    $workHourMultiplier = 1.0;
+
+                    // Pola naik-turun berdasarkan hari dalam bulan
+                    if ($dayOfMonth <= 5) { // Awal bulan - semangat tinggi
+                        $workHourMultiplier = 1.15 + (rand(-10, 10) / 100); // 1.05-1.25
+                    } elseif ($dayOfMonth <= 10) { // Turun - masa adaptasi
+                        $workHourMultiplier = 0.85 + (rand(-10, 15) / 100); // 0.75-1.0
+                    } elseif ($dayOfMonth <= 15) { // Naik lagi - momentum pertengahan bulan
+                        $workHourMultiplier = 1.1 + (rand(-5, 15) / 100); // 1.05-1.25
+                    } elseif ($dayOfMonth <= 20) { // Stabil - periode produktif
+                        $workHourMultiplier = 1.0 + (rand(-15, 10) / 100); // 0.85-1.1
+                    } elseif ($dayOfMonth <= 25) { // Naik tinggi - kejar deadline
+                        $workHourMultiplier = 1.2 + (rand(-5, 20) / 100); // 1.15-1.4
+                    } else { // Akhir bulan - turun drastis (persiapan/kelelahan)
+                        $workHourMultiplier = 0.7 + (rand(-15, 20) / 100); // 0.55-0.9
+                    }
+
+                    // Variasi jam masuk berdasarkan tingkat ketepatan waktu + faktor bulanan
+                    $latenessPenalty = (1 - $monthlyFactor) * 15; // Maksimal 15 menit keterlambatan
+
                     switch ($punctualityLevel) {
-                        case 1: // Very punctual (07:30 - 08:15)
+                        case 1: // Sangat tepat waktu (07:30 - 08:15)
                             $checkInHour = rand(7, 8);
                             $baseMinute = $checkInHour == 7 ? rand(30, 59) : rand(0, 15);
                             $checkInMinute = min(59, $baseMinute + $latenessPenalty);
@@ -91,7 +113,7 @@ class AttendanceSeeder extends Seeder
                                 $checkInMinute = $checkInMinute - 60;
                             }
                             break;
-                        case 3: // Often late (08:15 - 09:30)
+                        case 3: // Sering terlambat (08:15 - 09:30)
                             $checkInHour = rand(8, 9);
                             $baseMinute = $checkInHour == 8 ? rand(15, 59) : rand(0, 30);
                             $checkInMinute = min(59, $baseMinute + $latenessPenalty);
@@ -104,33 +126,57 @@ class AttendanceSeeder extends Seeder
 
                     $checkInTime = $date->copy()->setTime($checkInHour, $checkInMinute);
 
-                    // Variasi check-out berdasarkan overtime frequency
-                    $baseCheckOutHour = 17; // Standard 17:00
+                    // Variasi jam pulang berdasarkan frekuensi lembur + pola jam kerja
+                    $baseCheckOutHour = 17; // Standar 17:00
+
+                    // Sesuaikan jam pulang berdasarkan pengali jam kerja
+                    $extraHours = ($workHourMultiplier - 1) * 2; // Konversi pengali ke jam tambahan
+
                     switch ($overtimeFrequency) {
-                        case 1: // Never overtime (16:30 - 17:15)
+                        case 1: // Tidak pernah lembur (16:30 - 17:15) + penyesuaian pola
                             $checkOutHour = rand(16, 17);
                             $checkOutMinute = $checkOutHour == 16 ? rand(30, 59) : rand(0, 15);
+                            $checkOutHour += max(0, floor($extraHours)); // Tambah jam ekstra dari pola
+                            $checkOutMinute += ($extraHours - floor($extraHours)) * 60;
                             break;
-                        case 2: // Rarely (17:00 - 17:45)
+                        case 2: // Jarang lembur (17:00 - 17:45) + penyesuaian pola
                             $checkOutHour = 17;
                             $checkOutMinute = rand(0, 45);
+                            $checkOutHour += max(0, floor($extraHours));
+                            $checkOutMinute += ($extraHours - floor($extraHours)) * 60;
                             break;
-                        case 3: // Sometimes (17:00 - 18:30)
+                        case 3: // Kadang lembur (17:00 - 18:30) + penyesuaian pola
                             $checkOutHour = rand(17, 18);
                             $checkOutMinute = $checkOutHour == 18 ? rand(0, 30) : rand(0, 59);
+                            $checkOutHour += max(0, floor($extraHours));
+                            $checkOutMinute += ($extraHours - floor($extraHours)) * 60;
                             break;
-                        case 4: // Often overtime (17:30 - 19:00)
+                        case 4: // Sering lembur (17:30 - 19:00) + penyesuaian pola
                             $checkOutHour = rand(17, 19);
                             $checkOutMinute = $checkOutHour == 17 ? rand(30, 59) : rand(0, 59);
-                            if ($checkOutHour == 19) $checkOutMinute = 0; // Max 19:00
+                            if ($checkOutHour == 19) $checkOutMinute = 0; // Maksimal 19:00 dasar
+                            $checkOutHour += max(0, floor($extraHours));
+                            $checkOutMinute += ($extraHours - floor($extraHours)) * 60;
                             break;
+                    }
+
+                    // Tangani overflow menit
+                    if ($checkOutMinute >= 60) {
+                        $checkOutHour += floor($checkOutMinute / 60);
+                        $checkOutMinute = $checkOutMinute % 60;
+                    }
+
+                    // Batasi maksimal jam 20:00 untuk realisme
+                    if ($checkOutHour > 20) {
+                        $checkOutHour = 20;
+                        $checkOutMinute = 0;
                     }
 
                     $checkOutTime = $date->copy()->setTime($checkOutHour, $checkOutMinute);
 
-                    // Pastikan check-out selalu setelah check-in (min 4 jam kerja)
+                    // Pastikan jam pulang selalu setelah jam masuk (minimal 4 jam kerja)
                     if ($checkOutTime->diffInHours($checkInTime) < 4) {
-                        $checkOutTime = $checkInTime->copy()->addHours(8); // Standard 8 jam
+                        $checkOutTime = $checkInTime->copy()->addHours(8); // Standar 8 jam
                     }
 
                     $attendance = Attendance::create([
@@ -138,10 +184,10 @@ class AttendanceSeeder extends Seeder
                         'date' => $date->format('Y-m-d'),
                         'check_in_time' => $checkInTime,
                         'check_out_time' => $checkOutTime,
-                        'work_hour' => 0, // Will be calculated
+                        'work_hour' => 0, // Akan dihitung otomatis
                     ]);
 
-                    // Hitung work_hour menggunakan method dari model
+                    // Hitung jam kerja menggunakan method dari model
                     $attendance->computeWorkHour();
                     $attendance->save();
 

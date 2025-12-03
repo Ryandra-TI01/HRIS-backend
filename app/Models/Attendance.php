@@ -153,12 +153,25 @@ class Attendance extends BaseModel
      */
     public function getWorkHourAttribute($value): ?string
     {
-       if (is_null($value)) {
-           return null; // atau '00:00' sesuai kebutuhan
+        if (is_null($value) || $value === 0) {
+            return '00:00';
         }
 
-        $hours = floor($value);
-        $minutes = round(($value - $hours) * 60);
+        // Pastikan value adalah numeric
+        $numericValue = is_numeric($value) ? floatval($value) : 0;
+
+        if ($numericValue <= 0) {
+            return '00:00';
+        }
+
+        $hours = floor($numericValue);
+        $minutes = round(($numericValue - $hours) * 60);
+
+        // Handle jika minutes >= 60 akibat pembulatan
+        if ($minutes >= 60) {
+            $hours += 1;
+            $minutes -= 60;
+        }
 
         return sprintf('%02d:%02d', $hours, $minutes);
     }

@@ -175,8 +175,12 @@ class AttendanceSeeder extends Seeder
                     $checkOutTime = $date->copy()->setTime($checkOutHour, $checkOutMinute);
 
                     // Pastikan jam pulang selalu setelah jam masuk (minimal 4 jam kerja)
-                    if ($checkOutTime->diffInHours($checkInTime) < 4) {
-                        $checkOutTime = $checkInTime->copy()->addHours(8); // Standar 8 jam
+                    $actualDiffHours = $checkOutTime->diffInHours($checkInTime, false);
+                    if ($actualDiffHours < 4 || $checkOutTime->lte($checkInTime)) {
+                        // Buat durasi kerja yang bervariasi antara 7-9 jam (tidak selalu 8)
+                        $randomWorkHours = 7 + ($workHourMultiplier * 2); // 7 + (0.55-1.4 * 2) = 8.1-9.8 jam
+                        $randomWorkHours = max(6, min(10, $randomWorkHours)); // Batasi 6-10 jam
+                        $checkOutTime = $checkInTime->copy()->addMinutes(round($randomWorkHours * 60));
                     }
 
                     $attendance = Attendance::create([

@@ -128,7 +128,7 @@ class Attendance extends BaseModel
     /**
      * Hitung jam kerja berdasarkan check-in dan check-out
      * Formula: (check_out_time - check_in_time) dalam jam
-     * Otomatis kurangi 1 jam untuk break
+     * Menghitung durasi kerja aktual tanpa pengurangan break otomatis
      */
     public function computeWorkHour(): void
     {
@@ -143,10 +143,8 @@ class Attendance extends BaseModel
         // Hitung selisih menit dari check-in ke check-out
         $totalMinutes = $checkIn->diffInMinutes($checkOut);
 
-        // Kurangi 1 jam (60 menit) untuk break, tapi pastikan tidak negatif
-        $workMinutes = max(0, $totalMinutes - 60);
-
-        $this->attributes['work_hour'] = round($workMinutes / 60, 2);
+        // Langsung konversi ke jam tanpa pengurangan break otomatis
+        $this->attributes['work_hour'] = round($totalMinutes / 60, 2);
     }
 
     /**

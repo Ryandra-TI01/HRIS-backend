@@ -40,7 +40,7 @@ class DatabaseSeeder extends Seeder
         $this->command->line('📊 Summary:');
         $this->command->line('   - 50 Users (1 Admin HR, 4 Managers, 45 Employees)');
         $this->command->line('   - 50 Employee Profiles (Varied hiring dates across 12 months)');
-        $this->command->line('   - 3066+ Attendance Records (Sep-Nov 2025 with patterns)');
+        $this->command->line('   - 4000+ Attendance Records (Sep-Dec 2025 with patterns)');
         $this->command->line('   - 439+ Leave Requests (8-12 per employee, Sep-Nov focus)');
         $this->command->line('   - 276 Performance Reviews (Each manager reviews their department)');
         $this->command->line('   - 300 Salary Slips (6 months data per employee)');

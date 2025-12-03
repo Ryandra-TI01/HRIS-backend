@@ -12,7 +12,7 @@ class AttendanceSeeder extends Seeder
     /**
      * Run the database seeds.
      *
-     * Membuat data absensi untuk 3 bulan (September - November 2025) dengan variasi tinggi:
+     * Membuat data absensi untuk 4 bulan (September - Desember 2025) dengan variasi tinggi:
      * - 50 employees x ~65 working days = ~3250 records
      * - Skip weekend (Sabtu & Minggu) + simulasi sick leave (5% absent)
      * - Variasi check-in realistis: 07:30 - 09:30 (employee behavior patterns)
@@ -36,7 +36,8 @@ class AttendanceSeeder extends Seeder
         $months = [
             ['year' => 2025, 'month' => 9, 'name' => 'September'],
             ['year' => 2025, 'month' => 10, 'name' => 'October'],
-            ['year' => 2025, 'month' => 11, 'name' => 'November']
+            ['year' => 2025, 'month' => 11, 'name' => 'November'],
+            ['year' => 2025, 'month' => 12, 'name' => 'December']
         ];
 
         foreach ($employees as $employee) {
@@ -60,6 +61,9 @@ class AttendanceSeeder extends Seeder
                 } elseif ($monthData['month'] == 11) { // November - persiapan liburan
                     $monthlyFactor = 0.95; // Sedikit terdistraksi
                     $absentRate = 8; // Tingkat absen lebih tinggi (persiapan liburan)
+                } elseif ($monthData['month'] == 12) { // Desember - musim liburan akhir tahun
+                    $monthlyFactor = 0.85; // Kurang produktif (holiday season)
+                    $absentRate = 12; // Tingkat absen sangat tinggi (liburan akhir tahun)
                 }
 
                 for ($day = 1; $day <= $daysInMonth; $day++) {

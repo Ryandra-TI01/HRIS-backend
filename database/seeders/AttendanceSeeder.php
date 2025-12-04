@@ -48,6 +48,11 @@ class AttendanceSeeder extends Seeder
             foreach ($months as $monthData) {
                 $daysInMonth = Carbon::create($monthData['year'], $monthData['month'])->daysInMonth;
 
+                // Batasi hanya tanggal 1-3 untuk bulan Desember
+                if ($monthData['month'] == 12) {
+                    $daysInMonth = 3;
+                }
+
                 // Penyesuaian perilaku bulanan
                 $monthlyFactor = 1.0;
                 $absentRate = 5; // Tingkat absen dasar 5%

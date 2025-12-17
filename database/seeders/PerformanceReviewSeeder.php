@@ -50,13 +50,20 @@ class PerformanceReviewSeeder extends Seeder
         $performanceReviews = [];
         $totalReviews = 0;
 
-        // Review periods - fokus pada 3 bulan utama dengan beberapa bulan sebelumnya
+        // Review periods - 12 bulan penuh (1 review per bulan per employee)
         $reviewPeriods = [
+            '2025-01', '2025-02', '2025-03', '2025-04', '2025-05', '2025-06',
             '2025-07', '2025-08', '2025-09', '2025-10', '2025-11', '2025-12'
         ];
 
-        // Monthly performance factors (Sep-Nov focus)
+        // Monthly performance factors (seasonal variations)
         $monthlyFactors = [
+            '2025-01' => 0.90, // New year - fresh start
+            '2025-02' => 0.95, // Building momentum
+            '2025-03' => 1.00, // Normal pace
+            '2025-04' => 1.05, // Spring - high energy
+            '2025-05' => 1.00, // Steady performance
+            '2025-06' => 0.95, // Pre-summer slowdown
             '2025-07' => 0.85, // Summer - lower performance
             '2025-08' => 0.90, // Late summer
             '2025-09' => 1.05, // Back to work - high motivation

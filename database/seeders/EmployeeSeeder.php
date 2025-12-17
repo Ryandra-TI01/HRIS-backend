@@ -57,6 +57,15 @@ class EmployeeSeeder extends Seeder
         $departments = Department::all()->keyBy('name'); // Index by name untuk mudah ambil ID
 
         // Update $employees: langsung panggil $departments['Nama']->id
+        // Salary ranges berdasarkan level posisi
+        $salaryRanges = [
+            'manager' => ['min' => 15000000, 'max' => 25000000],    // Manager: 15-25 juta
+            'senior' => ['min' => 10000000, 'max' => 15000000],     // Senior: 10-15 juta
+            'mid' => ['min' => 7000000, 'max' => 10000000],         // Mid: 7-10 juta
+            'junior' => ['min' => 5000000, 'max' => 7000000],       // Junior: 5-7 juta
+            'intern' => ['min' => 3000000, 'max' => 5000000],       // Intern: 3-5 juta
+        ];
+
         $employees = [
             [
                 'user_id' => $adminUser->id,
@@ -66,6 +75,7 @@ class EmployeeSeeder extends Seeder
                 'join_date' => '2023-01-15',
                 'employment_status' => EmploymentStatus::PERMANENT,
                 'contact' => '+628123456789',
+                'basic_salary' => rand($salaryRanges['manager']['min'], $salaryRanges['manager']['max']),
             ],
             [
                 'user_id' => $managerUser->id,
@@ -75,6 +85,7 @@ class EmployeeSeeder extends Seeder
                 'join_date' => '2023-03-01',
                 'employment_status' => EmploymentStatus::PERMANENT,
                 'contact' => '+628234567890',
+                'basic_salary' => rand($salaryRanges['manager']['min'], $salaryRanges['manager']['max']),
             ],
             [
                 'user_id' => $yossyUser->id,
@@ -84,6 +95,7 @@ class EmployeeSeeder extends Seeder
                 'join_date' => '2023-09-10',
                 'employment_status' => EmploymentStatus::PERMANENT,
                 'contact' => '+628567890123',
+                'basic_salary' => rand($salaryRanges['manager']['min'], $salaryRanges['manager']['max']),
             ],
             [
                 'user_id' => $dinaUser->id,
@@ -93,6 +105,7 @@ class EmployeeSeeder extends Seeder
                 'join_date' => '2023-10-05',
                 'employment_status' => EmploymentStatus::PERMANENT,
                 'contact' => '+628678901234',
+                'basic_salary' => rand($salaryRanges['manager']['min'], $salaryRanges['manager']['max']),
             ],
             [
                 'user_id' => $ahmadUser->id,
@@ -102,6 +115,7 @@ class EmployeeSeeder extends Seeder
                 'join_date' => '2023-11-01',
                 'employment_status' => EmploymentStatus::PERMANENT,
                 'contact' => '+628789012345',
+                'basic_salary' => rand($salaryRanges['manager']['min'], $salaryRanges['manager']['max']),
             ],
         ];
 
@@ -152,6 +166,21 @@ class EmployeeSeeder extends Seeder
                     $empStatus = EmploymentStatus::INTERN;
                 }
 
+                // Tentukan basic salary berdasarkan posisi dan status
+                $salaryLevel = 'mid'; // Default mid-level
+
+                if (str_contains($position, 'Manager') || str_contains($position, 'Lead')) {
+                    $salaryLevel = 'senior';
+                } elseif (str_contains($position, 'Specialist') || str_contains($position, 'Analyst')) {
+                    $salaryLevel = 'mid';
+                } elseif (str_contains($position, 'Junior') || str_contains($position, 'Coordinator')) {
+                    $salaryLevel = 'junior';
+                } elseif ($empStatus === EmploymentStatus::INTERN) {
+                    $salaryLevel = 'intern';
+                }
+
+                $basicSalary = rand($salaryRanges[$salaryLevel]['min'], $salaryRanges[$salaryLevel]['max']);
+
                 $employees[] = [
                     'user_id' => $user->id,
                     'employee_code' => sprintf('EMP%03d', $empNumber),
@@ -159,7 +188,8 @@ class EmployeeSeeder extends Seeder
                     'department_id' => $deptObject->id,
                     'join_date' => sprintf('%d-%02d-%02d', $joinYear, $joinMonth, $joinDay),
                     'employment_status' => $empStatus,
-                    'contact' => '+62' . rand(800000000, 899999999)
+                    'contact' => '+62' . rand(800000000, 899999999),
+                    'basic_salary' => $basicSalary,
                 ];
 
                 $empNumber++;

@@ -24,6 +24,7 @@ class Employee extends BaseModel
         'join_date',
         'employment_status',
         'contact',
+        'basic_salary',
     ];
 
     /**
@@ -34,6 +35,7 @@ class Employee extends BaseModel
     protected $casts = [
         'join_date' => 'date',
         'employment_status' => EmploymentStatus::class,
+        'basic_salary' => 'decimal:2',
     ];
 
     // ========== Relasi ==========

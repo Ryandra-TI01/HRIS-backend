@@ -175,6 +175,19 @@ Route::middleware(['auth:api'])->group(function () {
     Route::delete('performance-reviews/{id}', [PerformanceReviewController::class, 'destroy'])
         ->middleware('role:admin_hr,manager');
 
+    // ========== Salary Generation (Auto Calculate from Attendance) ==========
+    // Generate salary slip untuk satu karyawan berdasarkan attendance
+    Route::post('salary-slips/generate/single', [\App\Http\Controllers\Api\SalaryGenerationController::class, 'generateSingle'])
+        ->middleware('role:admin_hr');
+
+    // Generate salary slip untuk semua karyawan dalam periode tertentu
+    Route::post('salary-slips/generate/bulk', [\App\Http\Controllers\Api\SalaryGenerationController::class, 'generateBulk'])
+        ->middleware('role:admin_hr');
+
+    // Preview kalkulasi gaji sebelum generate
+    Route::post('salary-slips/generate/preview', [\App\Http\Controllers\Api\SalaryGenerationController::class, 'previewCalculation'])
+        ->middleware('role:admin_hr');
+
     // ========== Salary Slips ==========
     // Slip gaji user yang login
     Route::get('salary-slips/me', [SalarySlipController::class, 'me'])

@@ -13,6 +13,7 @@ use App\Http\Controllers\Api\PerformanceReviewController;
 use App\Http\Controllers\Api\SalarySlipController;
 use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\ProfileController;
+use App\Http\Controllers\Api\DepartmentController;
 
 /*
 |--------------------------------------------------------------------------
@@ -56,6 +57,27 @@ Route::middleware(['auth:api'])->group(function () {
     // Dashboard overview untuk manager (Manager only)
     Route::get('dashboard/manager', [DashboardManagerController::class, 'index'])
         ->middleware('role:manager');
+
+    // ========== Departments (Admin HR only) ==========
+    // List semua departemen
+    Route::get('departments', [DepartmentController::class, 'index'])
+        ->middleware('role:admin_hr');
+
+    // Tambah departemen baru (Admin HR only)
+    Route::post('departments', [DepartmentController::class, 'store'])
+        ->middleware('role:admin_hr');
+
+    // Detail departemen by ID (Admin HR only)
+    Route::get('departments/{id}', [DepartmentController::class, 'show'])
+        ->middleware('role:admin_hr');
+
+    // Update departemen (Admin HR only)
+    Route::put('departments/{id}', [DepartmentController::class, 'update'])
+        ->middleware('role:admin_hr');
+
+    // Hapus departemen (Admin HR only)
+    Route::delete('departments/{id}', [DepartmentController::class, 'destroy'])
+        ->middleware('role:admin_hr');
 
     // ========== Employees ==========
     // Get list of managers (Admin HR & Manager only)
@@ -112,6 +134,14 @@ Route::middleware(['auth:api'])->group(function () {
     Route::get('leave-requests', [LeaveRequestController::class, 'index'])
         ->middleware('role:admin_hr,manager');
 
+    // Update permohonan cuti (employee atau admin HR only)
+    Route::put('leave-requests/{id}', [LeaveRequestController::class, 'update'])
+        ->middleware('role:employee,admin_hr');
+
+    // Hapus permohonan cuti (employee atau admin HR only)
+    Route::delete('leave-requests/{id}', [LeaveRequestController::class, 'destroy'])
+        ->middleware('role:employee,admin_hr');
+
     // Review (approve/reject) permohonan cuti (Admin HR & Manager only)
     Route::patch('leave-requests/{id}/review', [LeaveRequestController::class, 'review'])
     ->middleware('role:admin_hr,manager');
@@ -129,6 +159,10 @@ Route::middleware(['auth:api'])->group(function () {
     Route::get('performance-reviews/me', [PerformanceReviewController::class, 'me'])
         ->middleware('role:admin_hr,employee');
 
+    // Review kinerja berdasarkan employee tertentu (dengan statistik & chart)
+    Route::get('performance-reviews/employee/{employee_id}', [PerformanceReviewController::class, 'showByEmployee'])
+        ->middleware('role:admin_hr,manager,employee');
+
     // Detail review kinerja by ID
     Route::get('performance-reviews/{id}', [PerformanceReviewController::class, 'show'])
         ->middleware('role:admin_hr,manager,employee');
@@ -140,6 +174,19 @@ Route::middleware(['auth:api'])->group(function () {
     // Hapus review kinerja (Admin HR & Manager only)
     Route::delete('performance-reviews/{id}', [PerformanceReviewController::class, 'destroy'])
         ->middleware('role:admin_hr,manager');
+
+    // ========== Salary Generation (Auto Calculate from Attendance) ==========
+    // Generate salary slip untuk satu karyawan berdasarkan attendance
+    Route::post('salary-slips/generate/single', [\App\Http\Controllers\Api\SalaryGenerationController::class, 'generateSingle'])
+        ->middleware('role:admin_hr');
+
+    // Generate salary slip untuk semua karyawan dalam periode tertentu
+    Route::post('salary-slips/generate/bulk', [\App\Http\Controllers\Api\SalaryGenerationController::class, 'generateBulk'])
+        ->middleware('role:admin_hr');
+
+    // Preview kalkulasi gaji sebelum generate
+    Route::post('salary-slips/generate/preview', [\App\Http\Controllers\Api\SalaryGenerationController::class, 'previewCalculation'])
+        ->middleware('role:admin_hr');
 
     // ========== Salary Slips ==========
     // Slip gaji user yang login

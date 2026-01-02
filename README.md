@@ -1,58 +1,37 @@
-<div align="center">
+# HRIS Backend
 
-<img src="public/assets/logo-hris.jpg" alt="HRIS Logo" width="150" height="150">
+The backend infrastructure for the Human Resource Information System (HRIS), providing a comprehensive REST API built with Laravel. This system manages core HR functions with secure authentication and role-based access control.
 
-# 🏢 HRIS Backend - Laravel SIB
+## Project Overview
 
-> **Human Resource Information System**  
-> Complete REST API Backend with JWT Authentication
+HRIS Backend is a RESTful API designed to manage employee records, attendance, leave requests, performance evaluations, and payroll processing. It serves as the data and logic foundation for the HRIS ecosystem.
 
-[![Laravel](https://img.shields.io/badge/Laravel-12.x-red.svg)](https://laravel.com)
-[![PHP](https://img.shields.io/badge/PHP-8.3-blue.svg)](https://www.php.net)
-[![MySQL](https://img.shields.io/badge/MySQL-8.0-orange.svg)](https://www.mysql.com)
-[![JWT](https://img.shields.io/badge/JWT-Auth-green.svg)](https://github.com/tymondesigns/jwt-auth)
+This project was developed as the Final Project for the Full Stack Web Developer program (SIB Batch 3), organized by Kampus Merdeka in collaboration with PT. Nurul Fikri Academy.
 
-</div>
+## Core Features
 
----
+- JWT Authentication: Secure login and session management using tokens.
+- Employee Management: Comprehensive CRUD operations and filtering for employee data.
+- Attendance System: Automated tracking of check-in/out and work hour calculations.
+- Leave Management: Formal request and approval workflow for employee leave.
+- Performance Reviews: Standardized rating and feedback system for employee evaluations.
+- Payroll System: Automated generation of monthly salary slips.
+- Role-Based Access Control (RBAC): Permission management for Admins, Managers, and Employees.
+- Notification System: Integrated signaling and broadcast capabilities.
 
-## 📖 Tentang Proyek
+## Technology Stack
 
-**HRIS Backend Laravel SIB** adalah sistem backend REST API lengkap untuk manajemen Human Resource (HR). Sistem ini dirancang untuk memudahkan pengelolaan karyawan, absensi, cuti, penilaian kinerja, slip gaji, dan notifikasi dalam satu platform terintegrasi.
+- Framework: Laravel 12.x
+- Language: PHP 8.3
+- Database: MySQL 8.0
+- Authentication: JWT-Auth
 
-### 🎯 Tujuan Pengembangan
+## Development Team
 
-Proyek ini dikembangkan sebagai **Final Project** untuk menyelesaikan program **Studi Independen Bersertifikat (SIB) Batch 3 - Full Stack Web Developer** yang diselenggarakan oleh **Kampus Merdeka** bekerjasama dengan **PT. Nurul Fikri Academy (NF Computer)**. 
-
-### ✨ Fitur Utama
-
-| Modul | Deskripsi |
-|-------|-----------|
-| 🔐 **JWT Authentication** | Login/Logout dengan secure token |
-| 👥 **Employee Management** | CRUD karyawan lengkap dengan filter |
-| ⏰ **Attendance System** | Check-in/out dengan auto-calculate work hours |
-| 🏖️ **Leave Management** | Pengajuan & approval cuti |
-| ⭐ **Performance Reviews** | Penilaian kinerja karyawan (1-10 stars) |
-| 💰 **Salary Slips** | Generate slip gaji bulanan otomatis |
-| 🛡️ **RBAC** | Role-Based Access Control (Admin HR, Manager, Employee) |
-| 🔔 **Notifications** | Real-time notification & broadcast system |
-
----
-
-### Terima kasih telah menggunakan HRIS Backend kami! 🙏
-
-Proyek ini dikembangkan dengan sepenuh hati oleh tim kami untuk membantu  
-mempermudah pengelolaan SDM di perusahaan Anda.
-
-**Tim Pengembang:**  
-| 👤 Nama | 💼 Role |
-|---------|---------|
-| **Eko Muchamad Haryono** | Lead Backend Developer |
-| **Raka Muhammad Rabbani** | Backend Developer |
-| **Ryandra Athaya Saleh** | Lead Frontend Developer |
-| **Octaviani Nursalsabila** | UI/UX Developer |
-| **Yossy Indra Kusuma** | Frontend Developer |
-
-**FWD Batch 3 - Kelompok HRIS** 🚀
-
-
+| Name | Role |
+| :--- | :--- |
+| Eko Muchamad Haryono | Lead Backend Developer |
+| Raka Muhammad Rabbani | Backend Developer |
+| Ryandra Athaya Saleh | Lead Frontend Developer |
+| Octaviani Nursalsabila | UI/UX Developer |
+| Yossy Indra Kusuma | Frontend Developer |

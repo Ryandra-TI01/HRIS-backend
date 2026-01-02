@@ -27,10 +27,12 @@ class LeaveRequestSeeder extends Seeder
             $query->where('role', 'employee');
         })->get();
 
-        $manager = User::where('role', 'manager')->first();
+        // Ambil salah satu manager untuk jadi reviewer
+        $manager = User::where('role', 'manager')->first() 
+                ?? User::where('email', 'admin@hris.com')->first();
 
         if ($employees->isEmpty()) {
-            $this->command->error('❌ No employees found! Please run EmployeeSeeder first.');
+            $this->command->warn('No employees found! Please run EmployeeSeeder first.');
             return;
         }
 
@@ -162,6 +164,7 @@ class LeaveRequestSeeder extends Seeder
                     'status' => $status,
                     'reviewed_by' => $reviewedBy,
                     'reviewer_note' => $reviewerNote,
+                    'foto_cuti' => null, // No photo in seeder
                     'created_at' => $startDate->copy()->subDays(rand(1, 10)), // Applied 1-10 days before
                     'updated_at' => $reviewedBy ? $startDate->copy()->subDays(rand(0, 5)) : null
                 ];

@@ -24,6 +24,7 @@ class LeaveRequest extends BaseModel
         'status',
         'reviewed_by',
         'reviewer_note',
+        'foto_cuti'
     ];
 
     /**
@@ -86,11 +87,12 @@ class LeaveRequest extends BaseModel
 
     /**
      * Scope untuk filter leave request tim yang dikelola manager
+     * Manager mengelola employees melalui department yang dia kelola
      */
     public function scopeForManagerTeam($query, int $managerUserId)
     {
-        return $query->whereHas('employee', function ($employeeQuery) use ($managerUserId) {
-            $employeeQuery->where('manager_id', $managerUserId);
+        return $query->whereHas('employee.department', function ($deptQuery) use ($managerUserId) {
+            $deptQuery->where('manager_id', $managerUserId);
         });
     }
 
@@ -166,8 +168,8 @@ class LeaveRequest extends BaseModel
             return $query;
         }
 
-        return $query->whereHas('employee', function ($employeeQuery) use ($department) {
-            $employeeQuery->where('department', 'like', "%{$department}%");
+        return $query->whereHas('employee.department', function ($deptQuery) use ($department) {
+            $deptQuery->where('name', 'like', "%{$department}%");
         });
     }
 

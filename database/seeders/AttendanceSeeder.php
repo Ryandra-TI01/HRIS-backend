@@ -48,9 +48,10 @@ class AttendanceSeeder extends Seeder
             foreach ($months as $monthData) {
                 $daysInMonth = Carbon::create($monthData['year'], $monthData['month'])->daysInMonth;
 
-                // Batasi data absensi Desember hanya untuk tanggal 1-5 (hari kerja awal bulan)
+                // Batasi Desember sampai tanggal 17 (cukup untuk testing salary generation)
+                // ~12-13 hari kerja untuk kalkulasi gaji
                 if ($monthData['month'] == 12) {
-                    $daysInMonth = 5;
+                    $daysInMonth = 17;
                 }
 
                 // Penyesuaian perilaku bulanan

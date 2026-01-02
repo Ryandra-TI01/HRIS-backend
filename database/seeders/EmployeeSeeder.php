@@ -5,6 +5,7 @@ namespace Database\Seeders;
 use App\Models\User;
 use App\Models\Employee;
 use App\Enums\EmploymentStatus;
+use App\Models\Department;
 use Carbon\Carbon;
 use Illuminate\Database\Seeder;
 
@@ -52,101 +53,103 @@ class EmployeeSeeder extends Seeder
             $employeeUsers[] = $user;
         }
 
-        // Admin HR dan Managers (EMP001-005)
+        // Ambil semua departments sekali (efisien, nggak query ulang-ulang)
+        $departments = Department::all()->keyBy('name'); // Index by name untuk mudah ambil ID
+
+        // Update $employees: langsung panggil $departments['Nama']->id
+        // Salary ranges berdasarkan level posisi
+        $salaryRanges = [
+            'manager' => ['min' => 15000000, 'max' => 25000000],    // Manager: 15-25 juta
+            'senior' => ['min' => 10000000, 'max' => 15000000],     // Senior: 10-15 juta
+            'mid' => ['min' => 7000000, 'max' => 10000000],         // Mid: 7-10 juta
+            'junior' => ['min' => 5000000, 'max' => 7000000],       // Junior: 5-7 juta
+            'intern' => ['min' => 3000000, 'max' => 5000000],       // Intern: 3-5 juta
+        ];
+
         $employees = [
             [
                 'user_id' => $adminUser->id,
                 'employee_code' => 'EMP001',
                 'position' => 'HR Manager',
-                'department' => 'Human Resources',
+                'department_id' => $departments['Human Resources']?->id,
                 'join_date' => '2023-01-15',
                 'employment_status' => EmploymentStatus::PERMANENT,
                 'contact' => '+628123456789',
-                'manager_id' => null,
+                'basic_salary' => rand($salaryRanges['manager']['min'], $salaryRanges['manager']['max']),
             ],
             [
                 'user_id' => $managerUser->id,
                 'employee_code' => 'EMP002',
                 'position' => 'Engineering Manager',
-                'department' => 'IT',
+                'department_id' => $departments['IT']?->id,
                 'join_date' => '2023-03-01',
                 'employment_status' => EmploymentStatus::PERMANENT,
                 'contact' => '+628234567890',
-                'manager_id' => $adminUser->id,
+                'basic_salary' => rand($salaryRanges['manager']['min'], $salaryRanges['manager']['max']),
             ],
             [
                 'user_id' => $yossyUser->id,
                 'employee_code' => 'EMP003',
                 'position' => 'Marketing Manager',
-                'department' => 'Marketing',
+                'department_id' => $departments['Marketing']?->id,
                 'join_date' => '2023-09-10',
                 'employment_status' => EmploymentStatus::PERMANENT,
                 'contact' => '+628567890123',
-                'manager_id' => $adminUser->id,
+                'basic_salary' => rand($salaryRanges['manager']['min'], $salaryRanges['manager']['max']),
             ],
             [
                 'user_id' => $dinaUser->id,
                 'employee_code' => 'EMP004',
                 'position' => 'Finance Manager',
-                'department' => 'Finance',
+                'department_id' => $departments['Finance']?->id,
                 'join_date' => '2023-10-05',
                 'employment_status' => EmploymentStatus::PERMANENT,
                 'contact' => '+628678901234',
-                'manager_id' => $adminUser->id,
+                'basic_salary' => rand($salaryRanges['manager']['min'], $salaryRanges['manager']['max']),
             ],
             [
                 'user_id' => $ahmadUser->id,
                 'employee_code' => 'EMP005',
                 'position' => 'Operations Manager',
-                'department' => 'Operations',
+                'department_id' => $departments['Operations']?->id,
                 'join_date' => '2023-11-01',
                 'employment_status' => EmploymentStatus::PERMANENT,
                 'contact' => '+628789012345',
-                'manager_id' => $adminUser->id,
+                'basic_salary' => rand($salaryRanges['manager']['min'], $salaryRanges['manager']['max']),
             ],
         ];
 
-        // Employee positions berdasarkan departemen
-        $departments = [
-            'IT' => [
-                'positions' => ['Software Developer', 'Backend Developer', 'Frontend Developer', 'Full Stack Developer',
-                               'UI/UX Designer', 'Graphic Designer', 'QA Tester', 'QA Engineer', 'DevOps Engineer',
-                               'System Administrator', 'Database Administrator', 'Mobile Developer', 'Web Developer',
-                               'Security Engineer', 'Data Engineer'],
-                'manager_id' => $managerUser->id,
-                'count' => 15
-            ],
-            'Marketing' => [
-                'positions' => ['Marketing Executive', 'Content Creator', 'Social Media Specialist', 'SEO Specialist',
-                               'Digital Marketing Manager', 'Brand Manager', 'Marketing Analyst', 'Copywriter',
-                               'Creative Director', 'Public Relations'],
-                'manager_id' => $yossyUser->id,
-                'count' => 10
-            ],
-            'Finance' => [
-                'positions' => ['Accountant', 'Finance Staff', 'Financial Analyst', 'Tax Specialist', 'Auditor',
-                               'Budget Analyst', 'Treasury Staff', 'Accounts Payable', 'Accounts Receivable', 'Payroll Staff'],
-                'manager_id' => $dinaUser->id,
-                'count' => 10
-            ],
-            'Operations' => [
-                'positions' => ['Operations Staff', 'Admin Staff', 'HR Generalist', 'Recruiter', 'Logistics Coordinator',
-                               'Procurement Staff', 'Legal Staff', 'Compliance Officer', 'Office Manager', 'Executive Assistant'],
-                'manager_id' => $ahmadUser->id,
-                'count' => 10
-            ]
+        // Department positions mapping untuk employee generation
+        $departmentPositions = [
+            'Human Resources' => ['HR Specialist', 'Recruiter', 'HR Coordinator'],
+            'IT' => ['Software Developer', 'UI/UX Designer', 'QA Engineer', 'DevOps Engineer', 'Tech Lead'],
+            'Marketing' => ['Marketing Executive', 'Content Creator', 'Social Media Manager', 'SEO Specialist', 'Brand Manager'],
+            'Finance' => ['Accountant', 'Finance Analyst', 'Finance Manager', 'Auditor', 'Tax Specialist'],
+            'Operations' => ['Operations Coordinator', 'Logistics Manager', 'Admin Staff', 'Facilities Manager', 'Supply Chain Specialist'],
         ];
 
         // Generate employee data (EMP006-050)
         $empNumber = 6;
         $employeeIndex = 0;
 
-        foreach ($departments as $deptName => $deptData) {
-            for ($i = 0; $i < $deptData['count']; $i++) {
+        foreach ($departments as $deptName => $deptObject) {
+            // Tentukan jumlah employee per department (total 45 employee untuk 5 department)
+            $departmentCounts = [
+                'Human Resources' => 3,   // 3 employees
+                'IT' => 15,                // 15 developers/designers/qa
+                'Marketing' => 10,         // 10 marketing staff
+                'Finance' => 10,           // 10 finance staff
+                'Operations' => 7,         // 7 operations staff
+            ];
+
+            $empCount = $departmentCounts[$deptName] ?? 0;
+
+            for ($i = 0; $i < $empCount; $i++) {
                 if ($employeeIndex >= 45) break; // Safety check
 
                 $user = $employeeUsers[$employeeIndex];
-                $position = $deptData['positions'][$i % count($deptData['positions'])];
+                $positions = $departmentPositions[$deptName] ?? ['Staff'];
+                $position = $positions[$i % count($positions)];
 
                 // Random join date between 2023-2024
                 $joinYear = rand(2023, 2024);
@@ -163,15 +166,30 @@ class EmployeeSeeder extends Seeder
                     $empStatus = EmploymentStatus::INTERN;
                 }
 
+                // Tentukan basic salary berdasarkan posisi dan status
+                $salaryLevel = 'mid'; // Default mid-level
+
+                if (str_contains($position, 'Manager') || str_contains($position, 'Lead')) {
+                    $salaryLevel = 'senior';
+                } elseif (str_contains($position, 'Specialist') || str_contains($position, 'Analyst')) {
+                    $salaryLevel = 'mid';
+                } elseif (str_contains($position, 'Junior') || str_contains($position, 'Coordinator')) {
+                    $salaryLevel = 'junior';
+                } elseif ($empStatus === EmploymentStatus::INTERN) {
+                    $salaryLevel = 'intern';
+                }
+
+                $basicSalary = rand($salaryRanges[$salaryLevel]['min'], $salaryRanges[$salaryLevel]['max']);
+
                 $employees[] = [
                     'user_id' => $user->id,
                     'employee_code' => sprintf('EMP%03d', $empNumber),
                     'position' => $position,
-                    'department' => $deptName,
+                    'department_id' => $deptObject->id,
                     'join_date' => sprintf('%d-%02d-%02d', $joinYear, $joinMonth, $joinDay),
                     'employment_status' => $empStatus,
                     'contact' => '+62' . rand(800000000, 899999999),
-                    'manager_id' => $deptData['manager_id'],
+                    'basic_salary' => $basicSalary,
                 ];
 
                 $empNumber++;
